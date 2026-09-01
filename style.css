@@ -1,0 +1,145 @@
+/* Bauhaus Inspired Minimalist Theme */
+:root {
+    --bg-color: #f4f0ec;
+    --text-color: #1a1a1a;
+    --border-color: #1a1a1a;
+    --accent-red: #e63946;
+    --accent-blue: #1d3557;
+    --accent-yellow: #f4a261;
+}
+
+* {
+    box-sizing: border-box;
+    margin: 0;
+    padding: 0;
+}
+
+body {
+    background-color: var(--bg-color);
+    color: var(--text-color);
+    font-family: 'Helvetica Neue', Helvetica, Arial, sans-serif;
+    line-height: 1.6;
+    padding: 2rem;
+    max-width: 1200px;
+    margin: 0 auto;
+}
+
+header {
+    margin-bottom: 2rem;
+    border-bottom: 4px solid var(--border-color);
+    padding-bottom: 1rem;
+}
+
+header h1 {
+    font-size: 3rem;
+    text-transform: uppercase;
+    letter-spacing: -1px;
+}
+
+/* Tab Navigation */
+.nav-tabs {
+    display: flex;
+    gap: 0;
+    border-bottom: 4px solid var(--border-color);
+    margin-bottom: 2rem;
+}
+
+.nav-tabs a {
+    display: inline-block;
+    padding: 0.75rem 1.5rem;
+    text-decoration: none;
+    color: var(--text-color);
+    font-weight: bold;
+    text-transform: uppercase;
+    border: 4px solid var(--border-color);
+    border-bottom: none;
+    margin-right: -4px;
+    background-color: white;
+    transition: all 0.2s ease;
+}
+
+.nav-tabs a:hover {
+    background-color: var(--accent-yellow);
+}
+
+.nav-tabs a.active {
+    background-color: var(--border-color);
+    color: var(--bg-color);
+}
+
+/* Content Container */
+.content-box {
+    background-color: white;
+    border: 4px solid var(--border-color);
+    padding: 2rem;
+    box-shadow: 8px 8px 0px var(--accent-blue);
+    margin-bottom: 2rem;
+}
+
+.content-box h2 {
+    font-size: 2rem;
+    margin-bottom: 1rem;
+    border-bottom: 2px solid var(--border-color);
+    padding-bottom: 0.5rem;
+}
+
+.content-box h3 {
+    font-size: 1.5rem;
+    margin-top: 2rem;
+    margin-bottom: 1rem;
+    color: var(--accent-red);
+}
+
+p {
+    margin-bottom: 1rem;
+    font-size: 1.1rem;
+}
+
+/* Image Grids */
+.image-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(300px, 1fr));
+    gap: 1.5rem;
+    margin: 2rem 0;
+}
+
+.image-card {
+    border: 4px solid var(--border-color);
+    background-color: var(--bg-color);
+    padding: 1rem;
+    box-shadow: 4px 4px 0px var(--border-color);
+}
+
+.placeholder-img {
+    width: 100%;
+    aspect-ratio: 4/3;
+    background-color: #ddd;
+    border: 2px dashed var(--border-color);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-weight: bold;
+    color: #666;
+    margin-bottom: 1rem;
+}
+
+.caption {
+    font-size: 0.9rem;
+    font-style: italic;
+    text-align: center;
+}
+
+/* Print Styles */
+@media print {
+    body {
+        background-color: white;
+        padding: 0;
+    }
+    .content-box {
+        box-shadow: none;
+        border: none;
+    }
+    .nav-tabs {
+        display: none;
+    }
+}
