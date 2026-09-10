@@ -1,0 +1,191 @@
+[
+  {
+    "name": "cathedral",
+    "input": "proj1_data/cathedral.jpg",
+    "output": "outputs/single/cathedral.jpg",
+    "channel_shape": [
+      341,
+      390
+    ],
+    "green_xy": [
+      2,
+      5
+    ],
+    "red_xy": [
+      3,
+      12
+    ],
+    "overlap_xyxy": [
+      3,
+      12,
+      390,
+      341
+    ],
+    "alignment_seconds": 0.0553,
+    "total_seconds": 0.0619,
+    "parameters": {
+      "metric": "ncc",
+      "feature": "raw",
+      "method": "single",
+      "radius": 15,
+      "refine_radius": 3,
+      "crop": 0.12,
+      "coarsest_size": 350,
+      "max_samples": 0
+    },
+    "green_trace": [
+      {
+        "level": 0,
+        "shape": [
+          341,
+          390
+        ],
+        "shift_xy": [
+          2,
+          5
+        ],
+        "score": 0.9561094035922402
+      }
+    ],
+    "red_trace": [
+      {
+        "level": 0,
+        "shape": [
+          341,
+          390
+        ],
+        "shift_xy": [
+          3,
+          12
+        ],
+        "score": 0.9075305738215786
+      }
+    ]
+  },
+  {
+    "name": "monastery",
+    "input": "proj1_data/monastery.jpg",
+    "output": "outputs/single/monastery.jpg",
+    "channel_shape": [
+      341,
+      391
+    ],
+    "green_xy": [
+      2,
+      -3
+    ],
+    "red_xy": [
+      2,
+      3
+    ],
+    "overlap_xyxy": [
+      2,
+      3,
+      391,
+      338
+    ],
+    "alignment_seconds": 0.0653,
+    "total_seconds": 0.0697,
+    "parameters": {
+      "metric": "ncc",
+      "feature": "raw",
+      "method": "single",
+      "radius": 15,
+      "refine_radius": 3,
+      "crop": 0.12,
+      "coarsest_size": 350,
+      "max_samples": 0
+    },
+    "green_trace": [
+      {
+        "level": 0,
+        "shape": [
+          341,
+          391
+        ],
+        "shift_xy": [
+          2,
+          -3
+        ],
+        "score": 0.9518519256961532
+      }
+    ],
+    "red_trace": [
+      {
+        "level": 0,
+        "shape": [
+          341,
+          391
+        ],
+        "shift_xy": [
+          2,
+          3
+        ],
+        "score": 0.8731446425129579
+      }
+    ]
+  },
+  {
+    "name": "tobolsk",
+    "input": "proj1_data/tobolsk.jpg",
+    "output": "outputs/single/tobolsk.jpg",
+    "channel_shape": [
+      341,
+      396
+    ],
+    "green_xy": [
+      3,
+      3
+    ],
+    "red_xy": [
+      3,
+      6
+    ],
+    "overlap_xyxy": [
+      3,
+      6,
+      396,
+      341
+    ],
+    "alignment_seconds": 0.0559,
+    "total_seconds": 0.0603,
+    "parameters": {
+      "metric": "ncc",
+      "feature": "raw",
+      "method": "single",
+      "radius": 15,
+      "refine_radius": 3,
+      "crop": 0.12,
+      "coarsest_size": 350,
+      "max_samples": 0
+    },
+    "green_trace": [
+      {
+        "level": 0,
+        "shape": [
+          341,
+          396
+        ],
+        "shift_xy": [
+          3,
+          3
+        ],
+        "score": 0.9324999134307379
+      }
+    ],
+    "red_trace": [
+      {
+        "level": 0,
+        "shape": [
+          341,
+          396
+        ],
+        "shift_xy": [
+          3,
+          6
+        ],
+        "score": 0.8578720202778731
+      }
+    ]
+  }
+]

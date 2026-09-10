@@ -1,0 +1,47 @@
+[
+  {
+    "name": "cotton_mill",
+    "title": "[Cotton textile mill interior, probably in Tashkent]",
+    "item_url": "https://www.loc.gov/pictures/item/2018681303/",
+    "plate_url": "https://www.loc.gov/pictures/resource/prok.00138/",
+    "download_url": "https://tile.loc.gov/storage-services/master/pnp/prok/00100/00138a.tif",
+    "filename": "cotton_mill.tif",
+    "credit": "Prokudin-Gorskii photograph collection, Library of Congress, Prints and Photographs Division.",
+    "rights": "No known restrictions on publication. For additional information on commercial use, see \"Prokudin-Gorskii...,\" https://hdl.loc.gov/loc.pnp/res.237.prok",
+    "plate_width": 3752,
+    "plate_height": 9646,
+    "mode": "I;16",
+    "sha256": "a50077912d3ce136319ed087d4fa23662e77ccf147647b61ca82dccd8edfa391",
+    "bytes": 72393558
+  },
+  {
+    "name": "adobe_buildings",
+    "title": "[Adobe buildings and yurts, field in foreground, trees in background]",
+    "item_url": "https://www.loc.gov/pictures/item/2018681251/",
+    "plate_url": "https://www.loc.gov/pictures/resource/prok.00085/",
+    "download_url": "https://tile.loc.gov/storage-services/master/pnp/prok/00000/00085u.tif",
+    "filename": "adobe_buildings.tif",
+    "credit": "Prokudin-Gorskii photograph collection, Library of Congress, Prints and Photographs Division.",
+    "rights": "No known restrictions on publication. For additional information on commercial use, see \"Prokudin-Gorskii...,\" https://hdl.loc.gov/loc.pnp/res.237.prok",
+    "plate_width": 3733,
+    "plate_height": 9597,
+    "mode": "L",
+    "sha256": "2d82313547ca9be055a8e474ae22c1c5cbee8c8b2e302d842d27cd5aa6f01a76",
+    "bytes": 35864444
+  },
+  {
+    "name": "tiflis",
+    "title": "[Tiflis (?)]",
+    "item_url": "https://www.loc.gov/pictures/item/2018681238/",
+    "plate_url": "https://www.loc.gov/pictures/resource/prok.00072/",
+    "download_url": "https://tile.loc.gov/storage-services/master/pnp/prok/00000/00072u.tif",
+    "filename": "tiflis.tif",
+    "credit": "Prokudin-Gorskii photograph collection, Library of Congress, Prints and Photographs Division.",
+    "rights": "No known restrictions on publication. For additional information on commercial use, see \"Prokudin-Gorskii...,\" https://hdl.loc.gov/loc.pnp/res.237.prok",
+    "plate_width": 3713,
+    "plate_height": 9626,
+    "mode": "L",
+    "sha256": "24ef7c089824cd5a88f1fd824e7bf9cf7e6ad188cdcfbb6bef0faba544295504",
+    "bytes": 35780292
+  }
+]

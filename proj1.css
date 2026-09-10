@@ -1,0 +1,40 @@
+.project-one { --muted: #4b4b4b; }
+.project-one a { color: var(--accent-blue); text-underline-offset: 3px; }
+.project-one a:hover { color: #b8202d; }
+.project-one .eyebrow { font-size: .875rem; font-weight: 700; letter-spacing: .08em; text-transform: uppercase; }
+.project-one .intro { max-width: 76ch; }
+.project-one .page-links { display: flex; flex-wrap: wrap; gap: .5rem 1.3rem; margin: 1.5rem 0 2rem; border-block: 1px solid #ccc; padding: 1rem 0; }
+.project-one section { scroll-margin-top: 1rem; margin-top: 3rem; }
+.project-one .section-number { display: inline-block; color: var(--accent-blue); margin-right: .6rem; font-size: .9rem; vertical-align: middle; }
+.project-one .equation { background: #f1f3f5; border-left: 4px solid var(--accent-blue); padding: 1rem; overflow-x: auto; margin: 1rem 0; font-family: ui-monospace, SFMono-Regular, Consolas, monospace; }
+.project-one ul, .project-one ol { margin: 1rem 0 1.5rem 1.4rem; font-size: 1.05rem; }
+.project-one li { padding-left: .2rem; margin-bottom: .75rem; }
+.project-one .gallery { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 1.8rem; margin: 1.5rem 0; }
+.project-one figure { margin: 0; min-width: 0; }
+.project-one .result { border: 2px solid var(--border-color); background: white; box-shadow: 4px 4px 0 var(--accent-blue); }
+.project-one .result img { display: block; width: 100%; height: auto; background: #eee; }
+.project-one figcaption { padding: .9rem 1rem; font-size: .9rem; line-height: 1.6; }
+.project-one figcaption strong { display: block; font-size: 1.05rem; }
+.project-one .offsets { font-family: ui-monospace, SFMono-Regular, Consolas, monospace; font-size: .875rem; }
+.project-one .small { font-size: .9rem; color: var(--muted); }
+.project-one .comparison { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 1.2rem; margin: 1rem 0 1.5rem; }
+.project-one .comparison img { width: 100%; height: auto; display: block; border: 2px solid var(--border-color); }
+.project-one .comparison figcaption { padding: .5rem 0; }
+.project-one .table-wrap { overflow-x: auto; margin: 1.5rem 0; border: 1px solid #bbb; }
+.project-one table { width: 100%; border-collapse: collapse; text-align: left; font-size: .9rem; font-variant-numeric: tabular-nums; }
+.project-one caption { text-align: left; padding: .75rem 1rem; font-weight: 700; }
+.project-one th, .project-one td { padding: .65rem .8rem; border-bottom: 1px solid #d8d8d8; white-space: nowrap; }
+.project-one thead { background: var(--accent-blue); color: white; }
+.project-one tbody tr:nth-child(even) { background: #f3f4f5; }
+.project-one .failure { border-left: 4px solid #b8202d; padding: 1rem 1.2rem; background: #fff4f4; margin: 1.5rem 0; }
+.project-one .failure p:last-child { margin: 0; }
+.project-one pre { white-space: pre-wrap; overflow-wrap: anywhere; padding: 1rem; background: #f1f3f5; font-size: .9rem; }
+.project-one details { margin: 1.2rem 0; }
+.project-one summary { cursor: pointer; font-weight: 700; padding: .6rem 0; }
+.project-one .photo-credit { margin-top: 3rem; border-top: 2px solid var(--border-color); padding-top: 1rem; }
+a:focus-visible, summary:focus-visible { outline: 3px solid #b8202d; outline-offset: 4px; }
+@media (max-width: 650px) {
+    .project-one h2 { font-size: 1.65rem; }
+    .project-one .gallery, .project-one .comparison { grid-template-columns: 1fr; }
+    .project-one section { margin-top: 2rem; }
+}

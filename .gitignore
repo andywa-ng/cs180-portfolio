@@ -1,0 +1,8 @@
+.DS_Store
+__pycache__/
+.venv/
+proj1_data/
+additional_data/
+outputs/
+submission/
+.sites-runtime/

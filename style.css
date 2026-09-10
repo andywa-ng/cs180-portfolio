@@ -129,6 +129,15 @@ p {
     text-align: center;
 }
 
+/* Keep all project tabs usable on small screens. */
+@media (max-width: 650px) {
+    body { padding: 1rem; }
+    header h1 { font-size: 2rem; }
+    .nav-tabs a { padding: 0.65rem 0.7rem; font-size: 0.875rem; }
+    .content-box { padding: 1.1rem; box-shadow: 5px 5px 0 var(--accent-blue); }
+    .image-grid { grid-template-columns: minmax(0, 1fr); }
+}
+
 /* Print Styles */
 @media print {
     body {
