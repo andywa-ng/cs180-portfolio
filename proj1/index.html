@@ -1,0 +1,149 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Project 1</title>
+    <link rel="stylesheet" href="../style.css">
+</head>
+<body>
+    <header>
+        <h1>CS 180</h1>
+        <p>Computer Vision and Computational Photography</p>
+    </header>
+
+    <nav class="nav-tabs">
+        <a href="../index.html">Home</a>
+        <a href="../proj0/index.html">Project 0</a>
+        <a href="index.html" class="active">Project 1</a>
+    </nav>
+
+    <main class="content-box">
+        <h2>Project 1: Images of the Russian Empire</h2>
+        <p>The goal of this project was to reconstruct color images from the Prokudin-Gorskii photo collection. Each scan contains three grayscale exposures taken through blue, green, and red filters. By aligning these exposures and combining them, we can produce a color photograph.</p>
+
+        <h3>Part 1: Single-Scale Alignment</h3>
+        <p>The pixel values are first converted to floats between 0 and 1 by dividing by 255 for 8-bit scans or 65,535 for 16-bit scans. Each scan is then split into three images: blue, green, and red from top to bottom.</p>
+        <p>When aligning, blue is kept fixed in place while green and red are shifted to match it. For single-scale alignment, every shift from −15 to 15 pixels is tested in both directions. This gives 961 possible shifts per color channel. Each shift is scored using normalized cross-correlation (NCC), and the shift with the highest score is selected.</p>
+        <p>NCC first subtracts the mean from each image. For the resulting vectors b and b, we can then divide their dot product by the product of their lengths. This compares their brightness patterns while reducing the influence of overall brightness and contrast differences.</p>
+        <p>The outer 10% of each frame is excluded when scoring since the black and white scan borders can interfere with alignment. This means that every candidate is compared using the same valid interior region.</p>
+        <p>The selected shifts are then applied using <code>np.roll()</code>, and the channels are stacked in RGB order. The pixels that wrap around the edges are also cropped away. The original scan borders can still remain, which explains why there are colored bands around some images.</p>
+        <div class="image-grid">
+            <div class="image-card">
+                <a href="assets/cathedral.jpg"><img src="assets/cathedral.jpg" alt="Aligned cathedral" loading="lazy" style="width: 100%; border: 2px solid var(--border-color); margin-bottom: 1rem;"></a>
+                <p class="caption">Cathedral</p>
+            </div>
+            <div class="image-card">
+                <a href="assets/monastery.jpg"><img src="assets/monastery.jpg" alt="Aligned monastery" loading="lazy" style="width: 100%; border: 2px solid var(--border-color); margin-bottom: 1rem;"></a>
+                <p class="caption">Monastery</p>
+            </div>
+            <div class="image-card">
+                <a href="assets/tobolsk.jpg"><img src="assets/tobolsk.jpg" alt="Aligned Tobolsk cityscape" loading="lazy" style="width: 100%; border: 2px solid var(--border-color); margin-bottom: 1rem;"></a>
+                <p class="caption">Tobolsk</p>
+            </div>
+        </div>
+        <p>The single-scale results align the buildings and rooflines in all three JPEGs.</p>
+
+        <h3>Part 2: Multi-Scale Pyramid Alignment</h3>
+        <p>The larger TIFFs require shifts that extend beyond the single-scale search window. Searching for these larger shifts at full resolution would require a large number of comparisons.</p>
+        <p>An image pyramid reduces this work by repeatedly downsampling the image. We first apply a filter that approximates a Gaussian blur, convolving the image horizontally and vertically with the normalized kernel [1, 4, 6, 4, 1] / 16 and reflection padding. This reduces aliasing as we scale the image down. We then reduce the resolution by half by taking every second row and column, and then repeat this process until the longest side is at most 300 pixels.</p>
+        <p>For alignment, we start at the smallest level with a ±15-pixel NCC search. Moving to the next level doubles the previous offset, then we search ±3 pixels around that estimate in both directions. This gives 49 possible shifts at each refinement step. The process continues all the way to the original resolution, where the final offsets are applied.</p>
+        <p>For a five-level pyramid, this would requires 961 comparisons at the smallest level and four sets of 49, or 1,157 total comparisons per channel. A full-resolution ±179-pixel search would require 128,881 comparisons. The pyramid is much faster because the broad search happens on a small image, and each larger level simply refines the estimate.</p>
+        <p>The results of the eleven provided TIFF images are shown below. NCC is applied to raw pixel values for all results in this section. Click an image to view the full-resolution result. The computed offsets are available in <a href="assets/offsets.csv">offsets.csv</a>.
+        <div class="image-grid">
+            <div class="image-card">
+                <a href="assets/church.jpg"><img src="assets/church.jpg" alt="Church reconstructed with raw NCC" loading="lazy" style="width: 100%; border: 2px solid var(--border-color); margin-bottom: 1rem;"></a>
+                <p class="caption">Church</p>
+            </div>
+            <div class="image-card">
+                <a href="assets/emir.jpg"><img src="assets/emir.jpg" alt="Emir reconstructed with raw NCC, with a misaligned red channel" loading="lazy" style="width: 100%; border: 2px solid var(--border-color); margin-bottom: 1rem;"></a>
+                <p class="caption">Emir (See Part 4 for correction)</p>
+            </div>
+            <div class="image-card">
+                <a href="assets/harvesters.jpg"><img src="assets/harvesters.jpg" alt="Aligned harvesters" loading="lazy" style="width: 100%; border: 2px solid var(--border-color); margin-bottom: 1rem;"></a>
+                <p class="caption">Harvesters</p>
+            </div>
+            <div class="image-card">
+                <a href="assets/icon.jpg"><img src="assets/icon.jpg" alt="Aligned church interior and icon" loading="lazy" style="width: 100%; border: 2px solid var(--border-color); margin-bottom: 1rem;"></a>
+                <p class="caption">Icon</p>
+            </div>
+            <div class="image-card">
+                <a href="assets/ilemselga.jpg"><img src="assets/ilemselga.jpg" alt="Aligned Ilemselga church" loading="lazy" style="width: 100%; border: 2px solid var(--border-color); margin-bottom: 1rem;"></a>
+                <p class="caption">Ilemselga</p>
+            </div>
+            <div class="image-card">
+                <a href="assets/melons.jpg"><img src="assets/melons.jpg" alt="Aligned melon stand" loading="lazy" style="width: 100%; border: 2px solid var(--border-color); margin-bottom: 1rem;"></a>
+                <p class="caption">Melons</p>
+            </div>
+            <div class="image-card">
+                <a href="assets/religous_painting.jpg"><img src="assets/religous_painting.jpg" alt="Aligned religious painting" loading="lazy" style="width: 100%; border: 2px solid var(--border-color); margin-bottom: 1rem;"></a>
+                <p class="caption">Religious painting</p>
+            </div>
+            <div class="image-card">
+                <a href="assets/self_portrait.jpg"><img src="assets/self_portrait.jpg" alt="Aligned self portrait beside a stream" loading="lazy" style="width: 100%; border: 2px solid var(--border-color); margin-bottom: 1rem;"></a>
+                <p class="caption">Self portrait</p>
+            </div>
+            <div class="image-card">
+                <a href="assets/siren.jpg"><img src="assets/siren.jpg" alt="Aligned lilac blossoms" loading="lazy" style="width: 100%; border: 2px solid var(--border-color); margin-bottom: 1rem;"></a>
+                <p class="caption">Siren</p>
+            </div>
+            <div class="image-card">
+                <a href="assets/three_generations.jpg"><img src="assets/three_generations.jpg" alt="Aligned portrait of three generations" loading="lazy" style="width: 100%; border: 2px solid var(--border-color); margin-bottom: 1rem;"></a>
+                <p class="caption">Three generations</p>
+            </div>
+            <div class="image-card">
+                <a href="assets/wharf.jpg"><img src="assets/wharf.jpg" alt="Aligned wooden wharf" loading="lazy" style="width: 100%; border: 2px solid var(--border-color); margin-bottom: 1rem;"></a>
+                <p class="caption">Wharf</p>
+            </div>
+        </div>
+        <p>Some people and foliage still have small colored artifacts. Movement between exposures can leave local distortions even when the rest of the scene is aligned.</p>
+
+        <h3>Part 3: Additional Images</h3>
+        <p>The same pyramid method was applied to three additional full-resolution scans from the Library of Congress: a cotton mill, adobe buildings, and a city view. These use NCC on raw pixel values with the same settings as the provided images.</p>
+        <div class="image-grid">
+            <div class="image-card">
+                <a href="assets/cotton_mill.jpg"><img src="assets/cotton_mill.jpg" alt="Aligned cotton mill interior" loading="lazy" style="width: 100%; border: 2px solid var(--border-color); margin-bottom: 1rem;"></a>
+                <p class="caption">Cotton textile mill <br> <a href="https://www.loc.gov/pictures/item/2018681303/">Source</a></p>
+            </div>
+            <div class="image-card">
+                <a href="assets/adobe_buildings.jpg"><img src="assets/adobe_buildings.jpg" alt="Aligned adobe buildings and yurts" loading="lazy" style="width: 100%; border: 2px solid var(--border-color); margin-bottom: 1rem;"></a>
+                <p class="caption">Adobe buildings and yurts <br> <a href="https://www.loc.gov/pictures/item/2018681251/">Source</a></p>
+            </div>
+            <div class="image-card">
+                <a href="assets/tiflis.jpg"><img src="assets/tiflis.jpg" alt="Aligned city view cataloged as Tiflis" loading="lazy" style="width: 100%; border: 2px solid var(--border-color); margin-bottom: 1rem;"></a>
+                <p class="caption">Tiflis <br> <a href="https://www.loc.gov/pictures/item/2018681238/">Source</a></p>
+            </div>
+        </div>
+        <p>The building outlines and distant tree line are aligned, though some colored artifacts remain on the mill machinery. A colored mark is also visible near the bottom of the adobe.</p>
+
+        <h3>Part 4: Applying Gradient Matching to Emir</h3>
+        <p>Emir’s blue robe has very different brightness values in the red and blue exposures. Although NCC handles overall brightness changes, the relative brightness of objects can still cause an incorrect match. The raw pixel result produces a large alignment error in the red channel, as shown below.</p>
+        <p>To correct this, Emir is aligned using gradient magnitude instead of raw brightness. Horizontal and vertical brightness changes are estimated from the difference between neighboring pixels on either side, divided by two. Their magnitude gives the edge strength. This helps match object outlines even when their brightness differs between channels.</p>
+        <p>Gradients are calculated at each pyramid level, followed by the same NCC search. The final shifts are then applied to the original color channels.</p>
+        <div class="image-grid">
+            <div class="image-card">
+                <a href="assets/emir.jpg"><img src="assets/emir.jpg" alt="Emir before gradient matching, with a misaligned red channel" loading="lazy" style="width: 100%; border: 2px solid var(--border-color); margin-bottom: 1rem;"></a>
+                <p class="caption">Before: Raw Pixel NCC</p>
+            </div>
+            <div class="image-card">
+                <a href="assets/emir-gradient.jpg"><img src="assets/emir-gradient.jpg" alt="Emir after gradient alignment, with face and robe registered" loading="lazy" style="width: 100%; border: 2px solid var(--border-color); margin-bottom: 1rem;"></a>
+                <p class="caption">After: Gradient Magnitude NCC</p>
+            </div>
+        </div>
+        <p>Using gradients improves alignment around the face, robe, and background. Some small artifacts still remain.</p>
+
+        <h3>Part 5: Running the Reconstruction</h3>
+        <ol style="padding-left: 1.5rem; margin-bottom: 1rem;">
+            <li>Open the <code>proj1/</code> folder in a terminal. All of the code and settings are in <a href="proj1.py">proj1.py</a>.</li>
+            <li>Place the scans in <code>proj1_data/</code> and make sure the <code>assets/</code> folder exists.</li>
+            <li>Install NumPy and scikit-image with <code>python -m pip install -r requirements.txt</code>.</li>
+            <li>Run <code>python proj1.py</code>. JPEGs use single-scale alignment and TIFFs use pyramid alignment. Every scan is reconstructed using raw pixels, and Emir also gets a gradient reconstruction.</li>
+            <li>View the 18 output JPEGs for the 17 scans and <a href="assets/offsets.csv">offsets.csv</a> in <code>assets/</code>. The green and red offsets are also printed in the terminal.</li>
+        </ol>
+
+        <p style="text-align: center; margin-top: 2rem; font-weight: bold;">
+            <a href="../index.html" style="color: var(--accent-blue);">← Back to Home</a>
+        </p>
+    </main>
+</body>
+</html>
