@@ -1,0 +1,851 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <title>Project 2</title>
+    <link rel="stylesheet" href="../style.css?v=5">
+</head>
+<body class="project2">
+    <header>
+        <h1>CS 180</h1>
+        <p>Computer Vision and Computational Photography</p>
+    </header>
+
+    <nav class="nav-tabs">
+        <a href="../index.html">Home</a>
+        <a href="../proj0/index.html">Project 0</a>
+        <a href="../proj1/index.html">Project 1</a>
+        <a href="index.html" class="active">Project 2</a>
+    </nav>
+
+    <main class="content-box">
+        <h2>Project 2: Fun with Filters and Frequencies!</h2>
+        <p>The goal of this project was to explore how filters change an image. Convolution is first used to blur images and detect edges. Low and high frequencies are then combined for sharpening, hybrid images, and multiresolution blending.</p>
+        <p>The pixel values are first converted to floats between 0 and 1. Negative derivatives and Laplacian bands are displayed with zero as gray. Click an image to view the full-size result.</p>
+
+        <h3 id="convolution">Part 1.1: Convolutions from Scratch</h3>
+        <p>Convolution is implemented using four loops. The first two loops move across the image, while the inner two loops multiply and add the pixels under the kernel. In the two-loop version, NumPy handles the inner multiplication and sum. Both versions flip the kernel horizontally and vertically before applying it.</p>
+        <p>Both implementations use zero padding. In <code>same</code> mode, the output keeps the original image dimensions. In <code>full</code> mode, it has shape (H + K<sub>h</sub> − 1, W + K<sub>w</sub> − 1). For even kernels, the extra padding pixel is placed on the top or left to match SciPy. Since pixels outside the image are treated as black, the blur becomes darker near the border and the difference filters respond to the image boundary.</p>
+        <p>My selfie is converted to grayscale and convolved with a 9 × 9 box filter, Dₓ = [1, −1], and Dᵧ = Dₓᵀ. The box filter averages the nearby pixels, while the difference filters show changes in brightness along each direction.</p>
+        <pre><code>def pad_for_convolution(image, kernel, mode=&quot;same&quot;):
+    # Zero-pad for &quot;same&quot; or &quot;full&quot;, then flip the kernel for convolution.
+    image = np.asarray(image, dtype=np.float64)
+    kernel = np.asarray(kernel, dtype=np.float64)
+    kh, kw = kernel.shape
+    if mode == &quot;same&quot;:
+        # Put the extra pixel on top/left for even kernels to match SciPy.
+        padding = ((kh // 2, (kh - 1) // 2), (kw // 2, (kw - 1) // 2))
+    else:
+        padding = ((kh - 1, kh - 1), (kw - 1, kw - 1))
+    return np.pad(image, padding, mode=&quot;constant&quot;), kernel[::-1, ::-1]
+
+
+def convolve_four_loops(image, kernel, mode=&quot;same&quot;):
+    padded, flipped = pad_for_convolution(image, kernel, mode)
+    kh, kw = flipped.shape
+    h, w = padded.shape[0] - kh + 1, padded.shape[1] - kw + 1
+    result = np.zeros((h, w), dtype=np.float64)
+    for y in range(h):
+        for x in range(w):
+            for ky in range(kh):
+                for kx in range(kw):
+                    result[y, x] += padded[y + ky, x + kx] * flipped[ky, kx]
+    return result
+
+
+def convolve_two_loops(image, kernel, mode=&quot;same&quot;):
+    padded, flipped = pad_for_convolution(image, kernel, mode)
+    kh, kw = flipped.shape
+    h, w = padded.shape[0] - kh + 1, padded.shape[1] - kw + 1
+    result = np.zeros((h, w), dtype=np.float64)
+    for y in range(h):
+        for x in range(w):
+            result[y, x] = np.sum(padded[y:y + kh, x:x + kw] * flipped)
+    return result</code></pre>
+        <pre><code>box = np.ones((9, 9), dtype=float) / 81
+Dx = np.array([[1.0, -1.0]])
+Dy = Dx.T
+blurred = convolve_two_loops(selfie, box)
+dx = convolve_two_loops(selfie, Dx)
+dy = convolve_two_loops(selfie, Dy)</code></pre>
+
+        <div class="image-grid two-columns">
+            <div class="image-card">
+                <a href="assets/selfie_gray.jpg"><img src="assets/selfie_gray.jpg" alt="My selfie, grayscale" width="192" height="256" loading="lazy"></a>
+                <p class="caption">Grayscale selfie</p>
+            </div>
+            <div class="image-card">
+                <a href="assets/selfie_box.jpg"><img src="assets/selfie_box.jpg" alt="9 × 9 box filter" width="192" height="256" loading="lazy"></a>
+                <p class="caption">9 × 9 box filter</p>
+            </div>
+            <div class="image-card">
+                <a href="assets/selfie_dx.jpg"><img src="assets/selfie_dx.jpg" alt="Dₓ response; gray = zero" width="192" height="256" loading="lazy"></a>
+                <p class="caption">Dₓ response</p>
+            </div>
+            <div class="image-card">
+                <a href="assets/selfie_dy.jpg"><img src="assets/selfie_dy.jpg" alt="Dᵧ response; gray = zero" width="192" height="256" loading="lazy"></a>
+                <p class="caption">Dᵧ response</p>
+            </div>
+        </div>
+        <p>Both implementations are compared with <code>scipy.signal.convolve2d</code> on the same 192 × 256 grayscale selfie. Each runtime is the median of three runs. The box filter takes about 0.899 s with four loops, 0.085 s with two loops, and 0.0040 s with SciPy. The NumPy results match SciPy to within 3 × 10<sup>−15</sup>. The timings and errors for all three filters are available in <a href="assets/timings.csv">timings.csv</a>.</p>
+        <p>The two-loop version is faster for the box filter because NumPy handles the inner computation. For the small difference filters, the repeated NumPy calls take more time than the short inner loops. SciPy is the fastest for all three filters, using the same zero padding.</p>
+
+        <h3 id="differences">Part 1.2: Finite Difference Operator</h3>
+        <p>The cameraman image is convolved with Dₓ = [1, −1] and Dᵧ = Dₓᵀ. These measure the brightness difference from the left and upper neighbors. The two derivatives are then combined using <code>magnitude = sqrt(dx² + dy²)</code>. Symmetric padding reflects the image at the border so the black padding does not create extra edges.</p>
+
+        <div class="image-grid three-columns">
+            <div class="image-card">
+                <a href="assets/camera.jpg"><img src="assets/camera.jpg" alt="Cameraman" width="540" height="542" loading="lazy"></a>
+                <p class="caption">Cameraman</p>
+            </div>
+            <div class="image-card">
+                <a href="assets/camera_dx.jpg"><img src="assets/camera_dx.jpg" alt="Partial derivative in x" width="540" height="542" loading="lazy"></a>
+                <p class="caption">Partial derivative in x</p>
+            </div>
+            <div class="image-card">
+                <a href="assets/camera_dy.jpg"><img src="assets/camera_dy.jpg" alt="Partial derivative in y" width="540" height="542" loading="lazy"></a>
+                <p class="caption">Partial derivative in y</p>
+            </div>
+        </div>
+
+        <div class="image-grid three-columns">
+            <div class="image-card">
+                <a href="assets/camera_magnitude.jpg"><img src="assets/camera_magnitude.jpg" alt="Gradient magnitude, displayed in [0, 1]" width="540" height="542" loading="lazy"></a>
+                <p class="caption">Gradient magnitude</p>
+            </div>
+            <div class="image-card">
+                <a href="assets/camera_magnitude_visible.jpg"><img src="assets/camera_magnitude_visible.jpg" alt="Magnitude × 4 for visibility" width="540" height="542" loading="lazy"></a>
+                <p class="caption">Magnitude × 4 for visibility</p>
+            </div>
+            <div class="image-card">
+                <a href="assets/camera_edges_0.12.png"><img src="assets/camera_edges_0.12.png" alt="Selected binary edges: magnitude &gt; 0.12" width="540" height="542" loading="lazy"></a>
+                <p class="caption">Edges, threshold 0.12</p>
+            </div>
+        </div>
+        <h4>Choosing a threshold</h4>
+
+        <div class="image-grid three-columns">
+            <div class="image-card">
+                <a href="assets/camera_edges_0.08.png"><img src="assets/camera_edges_0.08.png" alt="Threshold 0.08" width="540" height="542" loading="lazy"></a>
+                <p class="caption">Threshold 0.08</p>
+            </div>
+            <div class="image-card">
+                <a href="assets/camera_edges_0.12.png"><img src="assets/camera_edges_0.12.png" alt="Threshold 0.12 — selected" width="540" height="542" loading="lazy"></a>
+                <p class="caption">Threshold 0.12 — selected</p>
+            </div>
+            <div class="image-card">
+                <a href="assets/camera_edges_0.18.png"><img src="assets/camera_edges_0.18.png" alt="Threshold 0.18" width="540" height="542" loading="lazy"></a>
+                <p class="caption">Threshold 0.18</p>
+            </div>
+        </div>
+        <p>At a threshold of 0.08, much of the grass texture remains. At 0.18, weaker edges around the camera and tripod disappear. I used 0.12 to keep the person and main tripod edges while removing some of the smaller changes in the ground. Some texture and the thin border in the original image are still visible.</p>
+
+
+        <h3 id="dog">Part 1.3: Derivative of Gaussian</h3>
+        <p>A 13 × 13 Gaussian filter with σ = 2 is created using <code>cv2.getGaussianKernel()</code>. The 1D Gaussian is multiplied by its transpose to form a 2D filter. The image is first blurred with this filter, then the same difference operators are applied.</p>
+
+        <div class="image-grid three-columns">
+            <div class="image-card">
+                <a href="assets/camera_blur.jpg"><img src="assets/camera_blur.jpg" alt="Gaussian-smoothed cameraman, σ = 2" width="540" height="542" loading="lazy"></a>
+                <p class="caption">Gaussian-smoothed cameraman, σ = 2</p>
+            </div>
+            <div class="image-card">
+                <a href="assets/dog_dx.jpg"><img src="assets/dog_dx.jpg" alt="Smoothed x derivative" width="540" height="542" loading="lazy"></a>
+                <p class="caption">Smoothed x derivative</p>
+            </div>
+            <div class="image-card">
+                <a href="assets/dog_dy.jpg"><img src="assets/dog_dy.jpg" alt="Smoothed y derivative" width="540" height="542" loading="lazy"></a>
+                <p class="caption">Smoothed y derivative</p>
+            </div>
+        </div>
+
+        <div class="image-grid three-columns">
+            <div class="image-card">
+                <a href="assets/sequential_magnitude.jpg"><img src="assets/sequential_magnitude.jpg" alt="Gaussian then finite differences" width="540" height="542" loading="lazy"></a>
+                <p class="caption">Gaussian then finite differences</p>
+            </div>
+            <div class="image-card">
+                <a href="assets/dog_magnitude.jpg"><img src="assets/dog_magnitude.jpg" alt="One DoG convolution per direction" width="540" height="542" loading="lazy"></a>
+                <p class="caption">DoG gradient magnitude</p>
+            </div>
+            <div class="image-card">
+                <a href="assets/dog_edges_0.035.png"><img src="assets/dog_edges_0.035.png" alt="Selected smoothed edges: magnitude &gt; 0.035" width="540" height="542" loading="lazy"></a>
+                <p class="caption">Edges, threshold 0.035</p>
+            </div>
+        </div>
+
+        <div class="image-grid three-columns">
+            <div class="image-card">
+                <a href="assets/gaussian_kernel.png"><img src="assets/gaussian_kernel.png" alt="Gaussian G, normalized for display" width="13" height="13" loading="lazy" class="kernel"></a>
+                <p class="caption">Gaussian filter</p>
+            </div>
+            <div class="image-card">
+                <a href="assets/dog_kernel_x.png"><img src="assets/dog_kernel_x.png" alt="G ∗ Dₓ (13 × 14), gray = zero" width="14" height="13" loading="lazy" class="kernel"></a>
+                <p class="caption">DoG filter, x</p>
+            </div>
+            <div class="image-card">
+                <a href="assets/dog_kernel_y.png"><img src="assets/dog_kernel_y.png" alt="G ∗ Dᵧ (14 × 13), gray = zero" width="13" height="14" loading="lazy" class="kernel"></a>
+                <p class="caption">DoG filter, y</p>
+            </div>
+        </div>
+        <p>The Gaussian is also convolved with Dₓ and Dᵧ using <code>mode="full"</code> to create the derivative of Gaussian filters. This combines blurring and differentiation into one filter: (I ∗ G) ∗ D = I ∗ (G ∗ D). To compare the two methods, the image is padded once at the start and both methods use valid convolutions. This keeps the boundary samples the same.</p>
+        <p>The two methods produce the same result up to floating-point rounding. The maximum difference is 1.40e-15 for the derivatives and 1.73e-15 for the gradient magnitudes. Their edge maps at a threshold of 0.035 are identical.</p>
+
+        <div class="image-grid three-columns">
+            <div class="image-card">
+                <a href="assets/camera_magnitude_visible.jpg"><img src="assets/camera_magnitude_visible.jpg" alt="Unsmoothed magnitude × 4" width="540" height="542" loading="lazy"></a>
+                <p class="caption">Unsmoothed magnitude × 4</p>
+            </div>
+            <div class="image-card">
+                <a href="assets/dog_magnitude_visible.jpg"><img src="assets/dog_magnitude_visible.jpg" alt="Smoothed magnitude × 4" width="540" height="542" loading="lazy"></a>
+                <p class="caption">Smoothed magnitude × 4</p>
+            </div>
+            <div class="image-card">
+                <a href="assets/dog_edges_0.035.png"><img src="assets/dog_edges_0.035.png" alt="Smoothed binary edges" width="540" height="542" loading="lazy"></a>
+                <p class="caption">Smoothed binary edges</p>
+            </div>
+        </div>
+
+        <div class="image-grid three-columns">
+            <div class="image-card">
+                <a href="assets/dog_edges_0.020.png"><img src="assets/dog_edges_0.020.png" alt="Smoothed threshold 0.020" width="540" height="542" loading="lazy"></a>
+                <p class="caption">Smoothed threshold 0.020</p>
+            </div>
+            <div class="image-card">
+                <a href="assets/dog_edges_0.035.png"><img src="assets/dog_edges_0.035.png" alt="Smoothed threshold 0.035 — selected" width="540" height="542" loading="lazy"></a>
+                <p class="caption">Smoothed threshold 0.035 — selected</p>
+            </div>
+            <div class="image-card">
+                <a href="assets/dog_edges_0.050.png"><img src="assets/dog_edges_0.050.png" alt="Smoothed threshold 0.050" width="540" height="542" loading="lazy"></a>
+                <p class="caption">Smoothed threshold 0.050</p>
+            </div>
+        </div>
+        <p>Blurring removes much of the grass texture and makes the main outlines more continuous, though some fine details become weaker. Since the smoothed derivatives have smaller values, the threshold is lowered to 0.035. A threshold of 0.020 keeps more ground texture, while 0.050 removes some weaker object edges. The magnitude comparisons use the same display scale.</p>
+
+
+        <h3 id="sharpening">Part 2.1: Image Sharpening</h3>
+        <p>Sharpening first separates the high frequencies by subtracting a Gaussian blur from the original image. A scaled copy of these high frequencies is then added back to make the edges stronger:</p>
+        <p>I<sub>sharp</sub> = I + α(I − G ∗ I) = [(1 + α)δ − αG] ∗ I.</p>
+        <p>The expression on the right gives an unsharp mask kernel that can be applied with one convolution per color channel. These examples use σ = 2 and a 13 × 13 Gaussian. The kernel sums to one, so constant brightness is preserved. The high-frequency images are displayed as <code>0.5 + 3(I − G ∗ I)</code> to make the small changes easier to see.</p>
+        <h4>Taj Mahal</h4>
+        <div class="image-grid three-columns">
+            <div class="image-card">
+                <a href="assets/taj_original.jpg"><img src="assets/taj_original.jpg" alt="Original" width="300" height="300" loading="lazy"></a>
+                <p class="caption">Original</p>
+            </div>
+            <div class="image-card">
+                <a href="assets/taj_blur.jpg"><img src="assets/taj_blur.jpg" alt="Gaussian blur, σ = 2" width="300" height="300" loading="lazy"></a>
+                <p class="caption">Gaussian blur, σ = 2</p>
+            </div>
+            <div class="image-card">
+                <a href="assets/taj_high.jpg"><img src="assets/taj_high.jpg" alt="High frequencies: 0.5 + 3(I − G ∗ I)" width="300" height="300" loading="lazy"></a>
+                <p class="caption">High frequencies</p>
+            </div>
+        </div>
+        <div class="image-grid two-columns">
+            <div class="image-card">
+                <a href="assets/taj_sharp_0.5.jpg"><img src="assets/taj_sharp_0.5.jpg" alt="Sharpened, α = 0.5" width="300" height="300" loading="lazy"></a>
+                <p class="caption">Sharpened, α = 0.5</p>
+            </div>
+            <div class="image-card">
+                <a href="assets/taj_sharp_1.jpg"><img src="assets/taj_sharp_1.jpg" alt="Sharpened, α = 1" width="300" height="300" loading="lazy"></a>
+                <p class="caption">Sharpened, α = 1</p>
+            </div>
+            <div class="image-card">
+                <a href="assets/taj_sharp_2.jpg"><img src="assets/taj_sharp_2.jpg" alt="Sharpened, α = 2" width="300" height="300" loading="lazy"></a>
+                <p class="caption">Sharpened, α = 2</p>
+            </div>
+            <div class="image-card">
+                <a href="assets/taj_sharp_4.jpg"><img src="assets/taj_sharp_4.jpg" alt="Sharpened, α = 4" width="300" height="300" loading="lazy"></a>
+                <p class="caption">Sharpened, α = 4</p>
+            </div>
+        </div>
+        <h4>Building photo</h4>
+        <div class="image-grid three-columns">
+            <div class="image-card">
+                <a href="assets/building_original.jpg"><img src="assets/building_original.jpg" alt="Original" width="360" height="480" loading="lazy"></a>
+                <p class="caption">Original</p>
+            </div>
+            <div class="image-card">
+                <a href="assets/building_blur.jpg"><img src="assets/building_blur.jpg" alt="Gaussian blur, σ = 2" width="360" height="480" loading="lazy"></a>
+                <p class="caption">Gaussian blur, σ = 2</p>
+            </div>
+            <div class="image-card">
+                <a href="assets/building_high.jpg"><img src="assets/building_high.jpg" alt="High frequencies: 0.5 + 3(I − G ∗ I)" width="360" height="480" loading="lazy"></a>
+                <p class="caption">High frequencies</p>
+            </div>
+        </div>
+        <div class="image-grid two-columns">
+            <div class="image-card">
+                <a href="assets/building_sharp_0.5.jpg"><img src="assets/building_sharp_0.5.jpg" alt="Sharpened, α = 0.5" width="360" height="480" loading="lazy"></a>
+                <p class="caption">Sharpened, α = 0.5</p>
+            </div>
+            <div class="image-card">
+                <a href="assets/building_sharp_1.jpg"><img src="assets/building_sharp_1.jpg" alt="Sharpened, α = 1" width="360" height="480" loading="lazy"></a>
+                <p class="caption">Sharpened, α = 1</p>
+            </div>
+            <div class="image-card">
+                <a href="assets/building_sharp_2.jpg"><img src="assets/building_sharp_2.jpg" alt="Sharpened, α = 2" width="360" height="480" loading="lazy"></a>
+                <p class="caption">Sharpened, α = 2</p>
+            </div>
+            <div class="image-card">
+                <a href="assets/building_sharp_4.jpg"><img src="assets/building_sharp_4.jpg" alt="Sharpened, α = 4" width="360" height="480" loading="lazy"></a>
+                <p class="caption">Sharpened, α = 4</p>
+            </div>
+        </div>
+        <p>As α increases, the windows, rooflines, and stone edges become stronger. At α = 1, the details are clearer without becoming too harsh. At α = 4, strong outlines and exaggerated texture appear. Across all four amounts, the single-kernel result matches the subtract-and-add result to within 4.88e-15 for both images.</p>
+        <h4>Blur a sharp image, then sharpen it again</h4>
+
+        <div class="image-grid three-columns">
+            <div class="image-card">
+                <a href="assets/evaluation_original.jpg"><img src="assets/evaluation_original.jpg" alt="Original building photo" width="360" height="480" loading="lazy"></a>
+                <p class="caption">Original building photo</p>
+            </div>
+            <div class="image-card">
+                <a href="assets/evaluation_blurred.jpg"><img src="assets/evaluation_blurred.jpg" alt="Deliberately blurred, σ = 2" width="360" height="480" loading="lazy"></a>
+                <p class="caption">Deliberately blurred, σ = 2</p>
+            </div>
+            <div class="image-card">
+                <a href="assets/evaluation_restored.jpg"><img src="assets/evaluation_restored.jpg" alt="Blurred image sharpened, σ = 2, α = 1.5" width="360" height="480" loading="lazy"></a>
+                <p class="caption">Sharpened again, α = 1.5</p>
+            </div>
+        </div>
+        <p>The building photo is deliberately blurred, then sharpened again. Sharpening restores some contrast around the tower and roofline, but the small windows and stone details remain softer than in the original. Increasing the remaining high frequencies cannot fully recover the detail lost during blurring. The mean squared error decreases from 0.006421 after blurring to 0.004868 after sharpening and display clipping.</p>
+
+
+        <h3 id="hybrids">Part 2.2: Hybrid Images</h3>
+        <p>Hybrid images combine the low frequencies of one image with the high frequencies of another: <code>H = G_low ∗ A + gain × (B − G_high ∗ B)</code>. The fine details are easier to see up close, while the smoother image becomes clearer from farther away. These examples use grayscale and a high-frequency gain of 1.25.</p>
+        <p>The eye centers are first aligned using translation, rotation, and scaling. Both images are placed on the same canvas using the landmarks in <a href="main.py">main.py</a>. The high-pass component keeps its positive and negative values when added to the low-pass image. Values are clipped only when saving the result.</p>
+        <h4>Derek + Nutmeg</h4>
+
+        <div class="image-grid two-columns">
+            <div class="image-card">
+                <a href="assets/derek_nutmeg_original_low.jpg"><img src="assets/derek_nutmeg_original_low.jpg" alt="Original Derek — low-frequency source" width="572" height="800" loading="lazy"></a>
+                <p class="caption">Derek, original</p>
+            </div>
+            <div class="image-card">
+                <a href="assets/derek_nutmeg_original_high.jpg"><img src="assets/derek_nutmeg_original_high.jpg" alt="Original Nutmeg — high-frequency source" width="800" height="600" loading="lazy"></a>
+                <p class="caption">Nutmeg, original</p>
+            </div>
+        </div>
+
+        <div class="image-grid two-columns">
+            <div class="image-card">
+                <a href="assets/derek_nutmeg_aligned_low.jpg"><img src="assets/derek_nutmeg_aligned_low.jpg" alt="Derek aligned to the eye landmarks" width="400" height="440" loading="lazy"></a>
+                <p class="caption">Derek, aligned</p>
+            </div>
+            <div class="image-card">
+                <a href="assets/derek_nutmeg_aligned_high.jpg"><img src="assets/derek_nutmeg_aligned_high.jpg" alt="Nutmeg aligned to the same eye landmarks" width="400" height="440" loading="lazy"></a>
+                <p class="caption">Nutmeg, aligned</p>
+            </div>
+        </div>
+
+        <div class="image-grid three-columns">
+            <div class="image-card">
+                <a href="assets/derek_nutmeg_low.jpg"><img src="assets/derek_nutmeg_low.jpg" alt="Derek low-pass, σ = 9" width="400" height="440" loading="lazy"></a>
+                <p class="caption">Derek low-pass, σ = 9</p>
+            </div>
+            <div class="image-card">
+                <a href="assets/derek_nutmeg_high.jpg"><img src="assets/derek_nutmeg_high.jpg" alt="Nutmeg high-pass, σ = 4; display offset +0.5" width="400" height="440" loading="lazy"></a>
+                <p class="caption">Nutmeg high-pass, σ = 4</p>
+            </div>
+            <div class="image-card">
+                <a href="assets/derek_nutmeg_hybrid.jpg"><img src="assets/derek_nutmeg_hybrid.jpg" alt="Derek + Nutmeg hybrid" width="400" height="440" loading="lazy"></a>
+                <p class="caption">Derek + Nutmeg hybrid</p>
+            </div>
+        </div>
+
+        <div class="image-grid two-columns">
+            <div class="image-card">
+                <a href="assets/derek_nutmeg_hybrid.jpg"><img src="assets/derek_nutmeg_hybrid.jpg" alt="Close view: whiskers and fur" width="400" height="440" loading="lazy"></a>
+                <p class="caption">Full-size hybrid</p>
+            </div>
+            <div class="image-card">
+                <a href="assets/derek_nutmeg_far.jpg"><img src="assets/derek_nutmeg_far.jpg" alt="20% size: coarse face structure" width="80" height="88" loading="lazy" class="small-image"></a>
+                <p class="caption">20% size preview</p>
+            </div>
+        </div>
+        <p>For Derek and Nutmeg, σ low = 9 and σ high = 4. Nutmeg’s fur and whiskers are visible in the full-size result, while Derek’s face is easier to see in the 20% preview. The eyes align, but the different cheek and face shapes still produce some overlapping features. The high-pass image and its Fourier transform are shown before applying the gain.</p>
+        <h4>Cutoff selection</h4>
+
+        <div class="image-grid three-columns">
+            <div class="image-card">
+                <a href="assets/hybrid_trial_5_2.jpg"><img src="assets/hybrid_trial_5_2.jpg" alt="σ low = 5, σ high = 2" width="400" height="440" loading="lazy"></a>
+                <p class="caption">σ low = 5, σ high = 2</p>
+            </div>
+            <div class="image-card">
+                <a href="assets/hybrid_trial_9_4.jpg"><img src="assets/hybrid_trial_9_4.jpg" alt="σ low = 9, σ high = 4 — selected" width="400" height="440" loading="lazy"></a>
+                <p class="caption">σ low = 9, σ high = 4 — selected</p>
+            </div>
+            <div class="image-card">
+                <a href="assets/hybrid_trial_14_6.jpg"><img src="assets/hybrid_trial_14_6.jpg" alt="σ low = 14, σ high = 6" width="400" height="440" loading="lazy"></a>
+                <p class="caption">σ low = 14, σ high = 6</p>
+            </div>
+        </div>
+        <p>The three cutoff trials use the same gain of 1.25. With (5, 2), Derek keeps sharper features and Nutmeg contributes mostly fine texture. With (14, 6), Derek becomes more blurred and broader cat features appear. I used (9, 4) to keep the low-frequency face recognizable while still showing the cat’s detail. The Gaussian filters have gradual frequency cutoffs controlled by their sigma values.</p>
+        <h4>Frequency analysis</h4>
+        <p>The Fourier transforms are displayed using <code>log1p(abs(fftshift(fft2(image))))</code>. Low frequencies are at the center and high frequencies are farther away. The low-pass result concentrates near the center, while the high-pass result suppresses the center. The hybrid contains both. All five spectra use the same display scale and are calculated before clipping.</p>
+
+        <div class="image-grid two-columns">
+            <div class="image-card">
+                <a href="assets/derek_nutmeg_fft_input_low.jpg"><img src="assets/derek_nutmeg_fft_input_low.jpg" alt="FFT of aligned Derek" width="400" height="440" loading="lazy"></a>
+                <p class="caption">FFT of aligned Derek</p>
+            </div>
+            <div class="image-card">
+                <a href="assets/derek_nutmeg_fft_input_high.jpg"><img src="assets/derek_nutmeg_fft_input_high.jpg" alt="FFT of aligned Nutmeg" width="400" height="440" loading="lazy"></a>
+                <p class="caption">FFT of aligned Nutmeg</p>
+            </div>
+        </div>
+
+        <div class="image-grid three-columns">
+            <div class="image-card">
+                <a href="assets/derek_nutmeg_fft_low.jpg"><img src="assets/derek_nutmeg_fft_low.jpg" alt="FFT of filtered Derek" width="400" height="440" loading="lazy"></a>
+                <p class="caption">FFT of filtered Derek</p>
+            </div>
+            <div class="image-card">
+                <a href="assets/derek_nutmeg_fft_high.jpg"><img src="assets/derek_nutmeg_fft_high.jpg" alt="FFT of filtered Nutmeg" width="400" height="440" loading="lazy"></a>
+                <p class="caption">FFT of filtered Nutmeg</p>
+            </div>
+            <div class="image-card">
+                <a href="assets/derek_nutmeg_fft_hybrid.jpg"><img src="assets/derek_nutmeg_fft_hybrid.jpg" alt="FFT of hybrid" width="400" height="440" loading="lazy"></a>
+                <p class="caption">FFT of hybrid</p>
+            </div>
+        </div>
+        <h4>Headshot + Miya</h4>
+        <div class="image-grid three-columns">
+            <div class="image-card">
+                <a href="assets/headshot_miya_original_low.jpg"><img src="assets/headshot_miya_original_low.jpg" alt="My headshot — low-frequency source" width="800" height="800" loading="lazy"></a>
+                <p class="caption">Headshot, original</p>
+            </div>
+            <div class="image-card">
+                <a href="assets/headshot_miya_original_high.jpg"><img src="assets/headshot_miya_original_high.jpg" alt="Miya — high-frequency source" width="600" height="800" loading="lazy"></a>
+                <p class="caption">Miya, original</p>
+            </div>
+            <div class="image-card">
+                <a href="assets/headshot_miya_hybrid.jpg"><img src="assets/headshot_miya_hybrid.jpg" alt="Headshot + Miya hybrid" width="400" height="440" loading="lazy"></a>
+                <p class="caption">Headshot + Miya hybrid</p>
+            </div>
+        </div>
+        <div class="image-grid three-columns">
+            <div class="image-card">
+                <a href="assets/headshot_miya_aligned_low.jpg"><img src="assets/headshot_miya_aligned_low.jpg" alt="My headshot aligned" width="400" height="440" loading="lazy"></a>
+                <p class="caption">My headshot aligned</p>
+            </div>
+            <div class="image-card">
+                <a href="assets/headshot_miya_aligned_high.jpg"><img src="assets/headshot_miya_aligned_high.jpg" alt="Miya aligned" width="400" height="440" loading="lazy"></a>
+                <p class="caption">Miya aligned</p>
+            </div>
+            <div class="image-card">
+                <a href="assets/headshot_miya_far.jpg"><img src="assets/headshot_miya_far.jpg" alt="20% size preview" width="80" height="88" loading="lazy" class="small-image"></a>
+                <p class="caption">20% size preview</p>
+            </div>
+        </div>
+        <p>σ low = 9, σ high = 3, high-frequency gain = 1.25.</p>
+        <p>For this pair, my headshot supplies the low frequencies and Miya supplies the high frequencies. The cat’s eyes, fur, and whiskers appear over the smoother face. In the small preview, my face becomes easier to recognize. The eyes are aligned, but the nose and mouth do not line up because the face shapes are different.</p>
+
+        <h4>Dog + Cat</h4>
+        <div class="image-grid three-columns">
+            <div class="image-card">
+                <a href="assets/dog_cat_original_low.jpg"><img src="assets/dog_cat_original_low.jpg" alt="Dog — low-frequency source" width="410" height="361" loading="lazy"></a>
+                <p class="caption">Dog, original</p>
+            </div>
+            <div class="image-card">
+                <a href="assets/dog_cat_original_high.jpg"><img src="assets/dog_cat_original_high.jpg" alt="Cat — high-frequency source" width="410" height="361" loading="lazy"></a>
+                <p class="caption">Cat, original</p>
+            </div>
+            <div class="image-card">
+                <a href="assets/dog_cat_hybrid.jpg"><img src="assets/dog_cat_hybrid.jpg" alt="Dog + Cat hybrid" width="410" height="361" loading="lazy"></a>
+                <p class="caption">Dog + Cat hybrid</p>
+            </div>
+        </div>
+        <div class="image-grid three-columns">
+            <div class="image-card">
+                <a href="assets/dog_cat_aligned_low.jpg"><img src="assets/dog_cat_aligned_low.jpg" alt="Dog aligned" width="410" height="361" loading="lazy"></a>
+                <p class="caption">Dog aligned</p>
+            </div>
+            <div class="image-card">
+                <a href="assets/dog_cat_aligned_high.jpg"><img src="assets/dog_cat_aligned_high.jpg" alt="Cat aligned" width="410" height="361" loading="lazy"></a>
+                <p class="caption">Cat aligned</p>
+            </div>
+            <div class="image-card">
+                <a href="assets/dog_cat_far.jpg"><img src="assets/dog_cat_far.jpg" alt="20% size preview" width="82" height="72" loading="lazy" class="small-image"></a>
+                <p class="caption">20% size preview</p>
+            </div>
+        </div>
+        <p>σ low = 6, σ high = 2, high-frequency gain = 1.25.</p>
+        <p>The dog supplies the low frequencies and the cat supplies the high frequencies. The cat’s whiskers and eye outlines are clearer nearby, while the dog’s broad muzzle remains visible in the small preview. Some overlapping nose features remain because aligning the eyes cannot also match the different face proportions.</p>
+
+
+        <h3 id="stacks">Part 2.3: Gaussian and Laplacian Stacks</h3>
+        <p>The Gaussian stack starts with the original image. Each level blurs the previous one using σ = 2, 4, 8, 16, and 32, without downsampling. All six levels remain 300 × 300 pixels.</p>
+        <p>The Laplacian stack is formed by subtracting the next Gaussian level from the current one: Lᵢ = Gᵢ − Gᵢ₊₁. The final level keeps the remaining low frequencies. Adding all six levels reconstructs the original image, with a maximum error of 1.11e-16 for the apple. The stacks are built using Gaussian filters and subtraction.</p>
+        <h4>Apple Gaussian stack</h4>
+        <div class="image-grid three-columns">
+            <div class="image-card">
+                <a href="assets/oraple_ga_0.jpg"><img src="assets/oraple_ga_0.jpg" alt="G 0" width="300" height="300" loading="lazy"></a>
+                <p class="caption">G 0</p>
+            </div>
+            <div class="image-card">
+                <a href="assets/oraple_ga_1.jpg"><img src="assets/oraple_ga_1.jpg" alt="G 1" width="300" height="300" loading="lazy"></a>
+                <p class="caption">G 1</p>
+            </div>
+            <div class="image-card">
+                <a href="assets/oraple_ga_2.jpg"><img src="assets/oraple_ga_2.jpg" alt="G 2" width="300" height="300" loading="lazy"></a>
+                <p class="caption">G 2</p>
+            </div>
+            <div class="image-card">
+                <a href="assets/oraple_ga_3.jpg"><img src="assets/oraple_ga_3.jpg" alt="G 3" width="300" height="300" loading="lazy"></a>
+                <p class="caption">G 3</p>
+            </div>
+            <div class="image-card">
+                <a href="assets/oraple_ga_4.jpg"><img src="assets/oraple_ga_4.jpg" alt="G 4" width="300" height="300" loading="lazy"></a>
+                <p class="caption">G 4</p>
+            </div>
+            <div class="image-card">
+                <a href="assets/oraple_ga_5.jpg"><img src="assets/oraple_ga_5.jpg" alt="G 5" width="300" height="300" loading="lazy"></a>
+                <p class="caption">G 5</p>
+            </div>
+        </div>
+        <h4>Orange Gaussian stack</h4>
+        <div class="image-grid three-columns">
+            <div class="image-card">
+                <a href="assets/oraple_gb_0.jpg"><img src="assets/oraple_gb_0.jpg" alt="G 0" width="300" height="300" loading="lazy"></a>
+                <p class="caption">G 0</p>
+            </div>
+            <div class="image-card">
+                <a href="assets/oraple_gb_1.jpg"><img src="assets/oraple_gb_1.jpg" alt="G 1" width="300" height="300" loading="lazy"></a>
+                <p class="caption">G 1</p>
+            </div>
+            <div class="image-card">
+                <a href="assets/oraple_gb_2.jpg"><img src="assets/oraple_gb_2.jpg" alt="G 2" width="300" height="300" loading="lazy"></a>
+                <p class="caption">G 2</p>
+            </div>
+            <div class="image-card">
+                <a href="assets/oraple_gb_3.jpg"><img src="assets/oraple_gb_3.jpg" alt="G 3" width="300" height="300" loading="lazy"></a>
+                <p class="caption">G 3</p>
+            </div>
+            <div class="image-card">
+                <a href="assets/oraple_gb_4.jpg"><img src="assets/oraple_gb_4.jpg" alt="G 4" width="300" height="300" loading="lazy"></a>
+                <p class="caption">G 4</p>
+            </div>
+            <div class="image-card">
+                <a href="assets/oraple_gb_5.jpg"><img src="assets/oraple_gb_5.jpg" alt="G 5" width="300" height="300" loading="lazy"></a>
+                <p class="caption">G 5</p>
+            </div>
+        </div>
+        <h4>Apple Laplacian stack</h4>
+        <div class="image-grid three-columns">
+            <div class="image-card">
+                <a href="assets/oraple_la_0.jpg"><img src="assets/oraple_la_0.jpg" alt="L 0" width="300" height="300" loading="lazy"></a>
+                <p class="caption">L 0</p>
+            </div>
+            <div class="image-card">
+                <a href="assets/oraple_la_1.jpg"><img src="assets/oraple_la_1.jpg" alt="L 1" width="300" height="300" loading="lazy"></a>
+                <p class="caption">L 1</p>
+            </div>
+            <div class="image-card">
+                <a href="assets/oraple_la_2.jpg"><img src="assets/oraple_la_2.jpg" alt="L 2" width="300" height="300" loading="lazy"></a>
+                <p class="caption">L 2</p>
+            </div>
+            <div class="image-card">
+                <a href="assets/oraple_la_3.jpg"><img src="assets/oraple_la_3.jpg" alt="L 3" width="300" height="300" loading="lazy"></a>
+                <p class="caption">L 3</p>
+            </div>
+            <div class="image-card">
+                <a href="assets/oraple_la_4.jpg"><img src="assets/oraple_la_4.jpg" alt="L 4" width="300" height="300" loading="lazy"></a>
+                <p class="caption">L 4</p>
+            </div>
+            <div class="image-card">
+                <a href="assets/oraple_la_5.jpg"><img src="assets/oraple_la_5.jpg" alt="L 5 (residual)" width="300" height="300" loading="lazy"></a>
+                <p class="caption">L 5 (residual)</p>
+            </div>
+        </div>
+        <h4>Orange Laplacian stack</h4>
+        <div class="image-grid three-columns">
+            <div class="image-card">
+                <a href="assets/oraple_lb_0.jpg"><img src="assets/oraple_lb_0.jpg" alt="L 0" width="300" height="300" loading="lazy"></a>
+                <p class="caption">L 0</p>
+            </div>
+            <div class="image-card">
+                <a href="assets/oraple_lb_1.jpg"><img src="assets/oraple_lb_1.jpg" alt="L 1" width="300" height="300" loading="lazy"></a>
+                <p class="caption">L 1</p>
+            </div>
+            <div class="image-card">
+                <a href="assets/oraple_lb_2.jpg"><img src="assets/oraple_lb_2.jpg" alt="L 2" width="300" height="300" loading="lazy"></a>
+                <p class="caption">L 2</p>
+            </div>
+            <div class="image-card">
+                <a href="assets/oraple_lb_3.jpg"><img src="assets/oraple_lb_3.jpg" alt="L 3" width="300" height="300" loading="lazy"></a>
+                <p class="caption">L 3</p>
+            </div>
+            <div class="image-card">
+                <a href="assets/oraple_lb_4.jpg"><img src="assets/oraple_lb_4.jpg" alt="L 4" width="300" height="300" loading="lazy"></a>
+                <p class="caption">L 4</p>
+            </div>
+            <div class="image-card">
+                <a href="assets/oraple_lb_5.jpg"><img src="assets/oraple_lb_5.jpg" alt="L 5 (residual)" width="300" height="300" loading="lazy"></a>
+                <p class="caption">L 5 (residual)</p>
+            </div>
+        </div>
+        <p>The apple and orange use the same display scale at each Laplacian level, with zero shown as gray. The last level is displayed as a normal image. Fine levels contain the peel texture, while coarser levels show larger changes in lighting and color.</p>
+        <h4>Oraple blending by scale</h4>
+        <p>The layout below follows Figure 3.42 in Szeliski. The first three rows show masked levels 0, 2, and 4 for the apple, orange, and their combination. The last row sums all six levels, including the remaining low frequencies, to reconstruct the blend.</p>
+
+        <div class="image-grid three-columns">
+            <div class="image-card">
+                <a href="assets/oraple_ca_0.jpg"><img src="assets/oraple_ca_0.jpg" alt="(a) Masked A, level 0" width="300" height="300" loading="lazy"></a>
+                <p class="caption">(a) Masked A, level 0</p>
+            </div>
+            <div class="image-card">
+                <a href="assets/oraple_cb_0.jpg"><img src="assets/oraple_cb_0.jpg" alt="(b) Masked B, level 0" width="300" height="300" loading="lazy"></a>
+                <p class="caption">(b) Masked B, level 0</p>
+            </div>
+            <div class="image-card">
+                <a href="assets/oraple_blended_0.jpg"><img src="assets/oraple_blended_0.jpg" alt="(c) Combined, level 0" width="300" height="300" loading="lazy"></a>
+                <p class="caption">(c) Combined, level 0</p>
+            </div>
+            <div class="image-card">
+                <a href="assets/oraple_ca_2.jpg"><img src="assets/oraple_ca_2.jpg" alt="(d) Masked A, level 2" width="300" height="300" loading="lazy"></a>
+                <p class="caption">(d) Masked A, level 2</p>
+            </div>
+            <div class="image-card">
+                <a href="assets/oraple_cb_2.jpg"><img src="assets/oraple_cb_2.jpg" alt="(e) Masked B, level 2" width="300" height="300" loading="lazy"></a>
+                <p class="caption">(e) Masked B, level 2</p>
+            </div>
+            <div class="image-card">
+                <a href="assets/oraple_blended_2.jpg"><img src="assets/oraple_blended_2.jpg" alt="(f) Combined, level 2" width="300" height="300" loading="lazy"></a>
+                <p class="caption">(f) Combined, level 2</p>
+            </div>
+            <div class="image-card">
+                <a href="assets/oraple_ca_4.jpg"><img src="assets/oraple_ca_4.jpg" alt="(g) Masked A, level 4" width="300" height="300" loading="lazy"></a>
+                <p class="caption">(g) Masked A, level 4</p>
+            </div>
+            <div class="image-card">
+                <a href="assets/oraple_cb_4.jpg"><img src="assets/oraple_cb_4.jpg" alt="(h) Masked B, level 4" width="300" height="300" loading="lazy"></a>
+                <p class="caption">(h) Masked B, level 4</p>
+            </div>
+            <div class="image-card">
+                <a href="assets/oraple_blended_4.jpg"><img src="assets/oraple_blended_4.jpg" alt="(i) Combined, level 4" width="300" height="300" loading="lazy"></a>
+                <p class="caption">(i) Combined, level 4</p>
+            </div>
+            <div class="image-card">
+                <a href="assets/oraple_ca_sum.jpg"><img src="assets/oraple_ca_sum.jpg" alt="(j) Sum of masked A bands" width="300" height="300" loading="lazy"></a>
+                <p class="caption">(j) Sum of masked A bands</p>
+            </div>
+            <div class="image-card">
+                <a href="assets/oraple_cb_sum.jpg"><img src="assets/oraple_cb_sum.jpg" alt="(k) Sum of masked B bands" width="300" height="300" loading="lazy"></a>
+                <p class="caption">(k) Sum of masked B bands</p>
+            </div>
+            <div class="image-card">
+                <a href="assets/oraple_result.jpg"><img src="assets/oraple_result.jpg" alt="(l) Reconstructed blend" width="300" height="300" loading="lazy"></a>
+                <p class="caption">(l) Reconstructed blend</p>
+            </div>
+        </div>
+
+
+        <h3 id="blending">Part 2.4: Multiresolution Blending</h3>
+        <p>A mask determines which image is used at each location. White selects image A and black selects image B. The mask is blurred into a Gaussian stack using the same sigma values as the image stacks. Each mask level is then used to weight the corresponding Laplacian bands, and the combined bands are added together. This gives a narrow transition for fine details and a wider transition for larger brightness changes.</p>
+        <h4>Apple + orange</h4>
+
+        <div class="image-grid three-columns">
+            <div class="image-card">
+                <a href="assets/oraple_apple.jpg"><img src="assets/oraple_apple.jpg" alt="A: apple" width="300" height="300" loading="lazy"></a>
+                <p class="caption">A: apple</p>
+            </div>
+            <div class="image-card">
+                <a href="assets/oraple_orange.jpg"><img src="assets/oraple_orange.jpg" alt="B: orange" width="300" height="300" loading="lazy"></a>
+                <p class="caption">B: orange</p>
+            </div>
+            <div class="image-card">
+                <a href="assets/oraple_mask.png"><img src="assets/oraple_mask.png" alt="Vertical step mask; white selects apple" width="300" height="300" loading="lazy"></a>
+                <p class="caption">Vertical mask</p>
+            </div>
+        </div>
+
+        <div class="image-grid two-columns">
+            <div class="image-card">
+                <a href="assets/oraple_hard.jpg"><img src="assets/oraple_hard.jpg" alt="Direct cut with the binary mask" width="300" height="300" loading="lazy"></a>
+                <p class="caption">Direct cut</p>
+            </div>
+            <div class="image-card">
+                <a href="assets/oraple_result.jpg"><img src="assets/oraple_result.jpg" alt="Multiresolution oraple" width="300" height="300" loading="lazy"></a>
+                <p class="caption">Multiresolution oraple</p>
+            </div>
+        </div>
+        <h4>Gaussian mask stack</h4>
+        <div class="image-grid three-columns">
+            <div class="image-card">
+                <a href="assets/oraple_gm_0.png"><img src="assets/oraple_gm_0.png" alt="Mask G 0" width="300" height="300" loading="lazy"></a>
+                <p class="caption">Mask G 0</p>
+            </div>
+            <div class="image-card">
+                <a href="assets/oraple_gm_1.png"><img src="assets/oraple_gm_1.png" alt="Mask G 1" width="300" height="300" loading="lazy"></a>
+                <p class="caption">Mask G 1</p>
+            </div>
+            <div class="image-card">
+                <a href="assets/oraple_gm_2.png"><img src="assets/oraple_gm_2.png" alt="Mask G 2" width="300" height="300" loading="lazy"></a>
+                <p class="caption">Mask G 2</p>
+            </div>
+            <div class="image-card">
+                <a href="assets/oraple_gm_3.png"><img src="assets/oraple_gm_3.png" alt="Mask G 3" width="300" height="300" loading="lazy"></a>
+                <p class="caption">Mask G 3</p>
+            </div>
+            <div class="image-card">
+                <a href="assets/oraple_gm_4.png"><img src="assets/oraple_gm_4.png" alt="Mask G 4" width="300" height="300" loading="lazy"></a>
+                <p class="caption">Mask G 4</p>
+            </div>
+            <div class="image-card">
+                <a href="assets/oraple_gm_5.png"><img src="assets/oraple_gm_5.png" alt="Mask G 5" width="300" height="300" loading="lazy"></a>
+                <p class="caption">Mask G 5</p>
+            </div>
+        </div>
+        <p>The direct cut leaves a visible brightness change down the middle. Blurring the mask at each level softens the seam while keeping the apple and orange textures on either side.</p>
+        <h4>Custom blend 1: plane view through a rock window</h4>
+        <div class="image-grid two-columns">
+            <div class="image-card">
+                <a href="assets/blend_frame_plane.jpg"><img src="assets/blend_frame_plane.jpg" alt="Original plane photo" width="450" height="600" loading="lazy"></a>
+                <p class="caption">Original plane photo</p>
+            </div>
+            <div class="image-card">
+                <a href="assets/blend_frame_a.jpg"><img src="assets/blend_frame_a.jpg" alt="A: plane fitted to the window bounds" width="450" height="600" loading="lazy"></a>
+                <p class="caption">A: fitted plane photo</p>
+            </div>
+            <div class="image-card">
+                <a href="assets/blend_frame_b.jpg"><img src="assets/blend_frame_b.jpg" alt="B: original rock frame" width="450" height="600" loading="lazy"></a>
+                <p class="caption">B: rock frame</p>
+            </div>
+            <div class="image-card">
+                <a href="assets/blend_frame_mask.png"><img src="assets/blend_frame_mask.png" alt="Window mask; white selects plane" width="450" height="600" loading="lazy"></a>
+                <p class="caption">Window mask</p>
+            </div>
+        </div>
+        <div class="image-grid two-columns">
+            <div class="image-card">
+                <a href="assets/blend_frame_masked_a.jpg"><img src="assets/blend_frame_masked_a.jpg" alt="A × mask" width="450" height="600" loading="lazy"></a>
+                <p class="caption">A × mask</p>
+            </div>
+            <div class="image-card">
+                <a href="assets/blend_frame_masked_b.jpg"><img src="assets/blend_frame_masked_b.jpg" alt="B × (1 − mask)" width="450" height="600" loading="lazy"></a>
+                <p class="caption">B × (1 − mask)</p>
+            </div>
+        </div>
+        <div class="image-grid two-columns">
+            <div class="image-card">
+                <a href="assets/blend_frame_hard.jpg"><img src="assets/blend_frame_hard.jpg" alt="Direct cut" width="450" height="600" loading="lazy"></a>
+                <p class="caption">Direct cut</p>
+            </div>
+            <div class="image-card">
+                <a href="assets/blend_frame_result.jpg"><img src="assets/blend_frame_result.jpg" alt="Multiresolution blend" width="450" height="600" loading="lazy"></a>
+                <p class="caption">Multiresolution blend</p>
+            </div>
+        </div>
+        <p>For this blend, the plane photo is placed inside the rock window. A polygon mask follows the uneven edge of the opening, and the plane photo is resized and cropped to fit. White selects the plane view and black keeps the rock. The stack uses σ = 1, 2, 4, and 8. Compared with the direct cut, the blend softens the brightness change around the window.</p>
+        <h4>Custom blend 2: mirrored city views</h4>
+        <div class="image-grid three-columns">
+            <div class="image-card">
+                <a href="assets/blend_city_mirror_a.jpg"><img src="assets/blend_city_mirror_a.jpg" alt="A: city2, already upside down" width="400" height="600" loading="lazy"></a>
+                <p class="caption">A: city2, upside down</p>
+            </div>
+            <div class="image-card">
+                <a href="assets/blend_city_mirror_b.jpg"><img src="assets/blend_city_mirror_b.jpg" alt="B: city, upright" width="400" height="600" loading="lazy"></a>
+                <p class="caption">B: city, upright</p>
+            </div>
+            <div class="image-card">
+                <a href="assets/blend_city_mirror_mask.png"><img src="assets/blend_city_mirror_mask.png" alt="Horizontal mask; white selects city2" width="400" height="600" loading="lazy"></a>
+                <p class="caption">Horizontal mask</p>
+            </div>
+        </div>
+        <div class="image-grid two-columns">
+            <div class="image-card">
+                <a href="assets/blend_city_mirror_masked_a.jpg"><img src="assets/blend_city_mirror_masked_a.jpg" alt="A × mask" width="400" height="600" loading="lazy"></a>
+                <p class="caption">A × mask</p>
+            </div>
+            <div class="image-card">
+                <a href="assets/blend_city_mirror_masked_b.jpg"><img src="assets/blend_city_mirror_masked_b.jpg" alt="B × (1 − mask)" width="400" height="600" loading="lazy"></a>
+                <p class="caption">B × (1 − mask)</p>
+            </div>
+        </div>
+        <div class="image-grid two-columns">
+            <div class="image-card">
+                <a href="assets/blend_city_mirror_hard.jpg"><img src="assets/blend_city_mirror_hard.jpg" alt="Direct cut" width="400" height="600" loading="lazy"></a>
+                <p class="caption">Direct cut</p>
+            </div>
+            <div class="image-card">
+                <a href="assets/blend_city_mirror_result.jpg"><img src="assets/blend_city_mirror_result.jpg" alt="Multiresolution blend" width="400" height="600" loading="lazy"></a>
+                <p class="caption">Multiresolution blend</p>
+            </div>
+        </div>
+        <p>For the mirror effect, city2 is used on top and city is used on the bottom. City2 is already upside down, and both photos are resized to 400 × 600 to keep their proportions. A horizontal mask selects the two halves. With σ = 2, 4, 8, and 16, the sky blends across the middle while the buildings stay sharp.</p>
+        <h4>Rock window blend: contributions by scale</h4>
+        <p>The rock window blend is shown by scale below. The first three rows show fine band 0, middle band 2, and the final low-frequency level 4. The bottom row reconstructs the result from all five levels. The masked inputs above show where each source is selected. This follows the layout of Figure 10 in Burt and Adelson.</p>
+
+        <div class="image-grid three-columns">
+            <div class="image-card">
+                <a href="assets/blend_frame_ca_0.jpg"><img src="assets/blend_frame_ca_0.jpg" alt="(a) Masked A, level 0" width="450" height="600" loading="lazy"></a>
+                <p class="caption">(a) Masked A, level 0</p>
+            </div>
+            <div class="image-card">
+                <a href="assets/blend_frame_cb_0.jpg"><img src="assets/blend_frame_cb_0.jpg" alt="(b) Masked B, level 0" width="450" height="600" loading="lazy"></a>
+                <p class="caption">(b) Masked B, level 0</p>
+            </div>
+            <div class="image-card">
+                <a href="assets/blend_frame_blended_0.jpg"><img src="assets/blend_frame_blended_0.jpg" alt="(c) Combined, level 0" width="450" height="600" loading="lazy"></a>
+                <p class="caption">(c) Combined, level 0</p>
+            </div>
+            <div class="image-card">
+                <a href="assets/blend_frame_ca_2.jpg"><img src="assets/blend_frame_ca_2.jpg" alt="(d) Masked A, level 2" width="450" height="600" loading="lazy"></a>
+                <p class="caption">(d) Masked A, level 2</p>
+            </div>
+            <div class="image-card">
+                <a href="assets/blend_frame_cb_2.jpg"><img src="assets/blend_frame_cb_2.jpg" alt="(e) Masked B, level 2" width="450" height="600" loading="lazy"></a>
+                <p class="caption">(e) Masked B, level 2</p>
+            </div>
+            <div class="image-card">
+                <a href="assets/blend_frame_blended_2.jpg"><img src="assets/blend_frame_blended_2.jpg" alt="(f) Combined, level 2" width="450" height="600" loading="lazy"></a>
+                <p class="caption">(f) Combined, level 2</p>
+            </div>
+            <div class="image-card">
+                <a href="assets/blend_frame_ca_4.jpg"><img src="assets/blend_frame_ca_4.jpg" alt="(g) Masked A, level 4" width="450" height="600" loading="lazy"></a>
+                <p class="caption">(g) Masked A, level 4</p>
+            </div>
+            <div class="image-card">
+                <a href="assets/blend_frame_cb_4.jpg"><img src="assets/blend_frame_cb_4.jpg" alt="(h) Masked B, level 4" width="450" height="600" loading="lazy"></a>
+                <p class="caption">(h) Masked B, level 4</p>
+            </div>
+            <div class="image-card">
+                <a href="assets/blend_frame_blended_4.jpg"><img src="assets/blend_frame_blended_4.jpg" alt="(i) Combined, level 4" width="450" height="600" loading="lazy"></a>
+                <p class="caption">(i) Combined, level 4</p>
+            </div>
+            <div class="image-card">
+                <a href="assets/blend_frame_ca_sum.jpg"><img src="assets/blend_frame_ca_sum.jpg" alt="(j) Sum of masked A bands" width="450" height="600" loading="lazy"></a>
+                <p class="caption">(j) Sum of masked A bands</p>
+            </div>
+            <div class="image-card">
+                <a href="assets/blend_frame_cb_sum.jpg"><img src="assets/blend_frame_cb_sum.jpg" alt="(k) Sum of masked B bands" width="450" height="600" loading="lazy"></a>
+                <p class="caption">(k) Sum of masked B bands</p>
+            </div>
+            <div class="image-card">
+                <a href="assets/blend_frame_result.jpg"><img src="assets/blend_frame_result.jpg" alt="(l) Reconstructed blend" width="450" height="600" loading="lazy"></a>
+                <p class="caption">(l) Reconstructed blend</p>
+            </div>
+        </div>
+
+
+        <h3 id="reflection">What I Learned</h3>
+        <p>The main thing I learned was how the same Gaussian blur can be used for several different effects. Subtracting a blur gives the high frequencies, which can be added back for sharpening or combined with another image. The hybrid images also showed how important the balance between the two components is. Too much blur makes the low-frequency face harder to recognize, while too much high-frequency gain makes the detail look harsh.</p>
+
+        <h3>Running the Code</h3>
+        <ol>
+            <li>Open the <code>proj2/</code> folder. Filtering code is in <a href="part1.py">part1.py</a>, frequency applications are in <a href="part2.py">part2.py</a>, and the images and settings are selected in <a href="main.py">main.py</a>.</li>
+            <li>Keep the input images in <code>proj2_data/</code>.</li>
+            <li>Install the dependencies with <code>python -m pip install -r requirements.txt</code>.</li>
+            <li>Run <code>python main.py</code> to generate the images and <a href="assets/timings.csv">timings.csv</a> in <code>assets/</code>. The DoG comparison, reconstruction error, and blur evaluation are printed in the terminal.</li>
+            <li>Open <code>index.html</code> to view the results.</li>
+        </ol>
+
+        <p style="text-align: center; margin-top: 2rem; font-weight: bold;">
+            <a href="../index.html" style="color: var(--accent-blue);">← Back to Home</a>
+        </p>
+    </main>
+</body>
+</html>

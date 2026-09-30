@@ -110,6 +110,49 @@ p {
     box-shadow: 4px 4px 0px var(--border-color);
 }
 
+.image-card img {
+    display: block;
+    width: 100%;
+    height: auto;
+    border: 2px solid var(--border-color);
+    margin-bottom: 1rem;
+}
+
+.image-card img.small-image {
+    width: auto;
+    max-width: 100%;
+    margin: 1rem auto;
+}
+
+.image-card img.kernel {
+    height: 180px;
+    object-fit: contain;
+    image-rendering: pixelated;
+}
+
+.image-grid.three-columns {
+    grid-template-columns: repeat(3, minmax(0, 1fr));
+}
+
+.content-box h4 {
+    margin: 1.5rem 0 1rem;
+    font-size: 1.1rem;
+}
+
+.content-box pre {
+    overflow-x: auto;
+    padding: 1rem;
+    margin: 1rem 0;
+    background-color: var(--bg-color);
+    border: 2px solid var(--border-color);
+    font-size: 0.85rem;
+}
+
+.content-box ol {
+    padding-left: 1.5rem;
+    margin-bottom: 1rem;
+}
+
 .placeholder-img {
     width: 100%;
     aspect-ratio: 4/3;
@@ -129,13 +172,49 @@ p {
     text-align: center;
 }
 
-/* Keep all project tabs usable on small screens. */
-@media (max-width: 650px) {
-    body { padding: 1rem; }
-    header h1 { font-size: 2rem; }
-    .nav-tabs a { padding: 0.65rem 0.7rem; font-size: 0.875rem; }
-    .content-box { padding: 1.1rem; box-shadow: 5px 5px 0 var(--accent-blue); }
-    .image-grid { grid-template-columns: minmax(0, 1fr); }
+/* Keep comparison rows aligned while preserving each image's shape. */
+.project2 .image-grid {
+    grid-template-columns: repeat(3, minmax(0, 1fr));
+}
+
+.project2 .image-grid.two-columns {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+}
+
+.project2 .image-card {
+    min-width: 0;
+    padding: 0.75rem;
+}
+
+.project2 .image-card > a {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    height: 280px;
+    margin-bottom: 0.75rem;
+}
+
+.project2 .image-card img {
+    width: auto;
+    height: auto;
+    max-width: 100%;
+    max-height: 100%;
+    border: none;
+    margin: 0;
+}
+
+.project2 .image-card img.kernel {
+    width: auto;
+    height: 180px;
+    max-width: 100%;
+}
+
+.project2 .caption {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    min-height: 2.8em;
+    margin-bottom: 0;
 }
 
 /* Print Styles */
