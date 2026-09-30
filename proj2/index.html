@@ -20,13 +20,12 @@
 
     <main class="content-box">
         <h2>Project 2: Fun with Filters and Frequencies!</h2>
-        <p>The goal of this project was to explore how filters change an image. Convolution is first used to blur images and detect edges. Low and high frequencies are then combined for sharpening, hybrid images, and multiresolution blending.</p>
-        <p>The pixel values are first converted to floats between 0 and 1. Negative derivatives and Laplacian bands are displayed with zero as gray. Click an image to view the full-size result.</p>
+        <p>The goal of this project was to explore the use of filters on images. We first used convolution to blur images and detect edges, and then used low and high frequencies for sharpening, hybrid images, and multiresolution blending.</p>
 
         <h3 id="convolution">Part 1.1: Convolutions from Scratch</h3>
-        <p>Convolution is implemented using four loops. The first two loops move across the image, while the inner two loops multiply and add the pixels under the kernel. In the two-loop version, NumPy handles the inner multiplication and sum. Both versions flip the kernel horizontally and vertically before applying it.</p>
-        <p>Both implementations use zero padding. In <code>same</code> mode, the output keeps the original image dimensions. In <code>full</code> mode, it has shape (H + K<sub>h</sub> − 1, W + K<sub>w</sub> − 1). For even kernels, the extra padding pixel is placed on the top or left to match SciPy. Since pixels outside the image are treated as black, the blur becomes darker near the border and the difference filters respond to the image boundary.</p>
-        <p>My selfie is converted to grayscale and convolved with a 9 × 9 box filter, Dₓ = [1, −1], and Dᵧ = Dₓᵀ. The box filter averages the nearby pixels, while the difference filters show changes in brightness along each direction.</p>
+        <p>Convolution is implemented using four for loops. The first two loops iterate across the image, while the inner two loops multiply and add the pixels under the kernel. In the version with only two loops, NumPy handles the inner multiplication and summing. Both flip the kernel horizontally and vertically before applying it.</p>
+        <p>Both implementations also use zero padding. In <code>same</code> mode, the output keeps the dimensions of the original image. In <code>full</code> mode, it has shape (H + K<sub>h</sub> − 1, W + K<sub>w</sub> − 1). For kernels with an even number of rows or columns, the extra padding pixel is placed on the top or left (matching SciPy). Since pixels outside the image are treated as black, the blur becomes darker near the border and the difference filters respond to the image boundary.</p>
+        <p>My selfie was converted to grayscale and convolved with a 9 × 9 box filter, Dₓ = [1, −1], and Dᵧ = Dₓᵀ. The box filter averages the nearby pixels, while the difference filters show changes in brightness along each direction.</p>
         <pre><code>def pad_for_convolution(image, kernel, mode=&quot;same&quot;):
     # Zero-pad for &quot;same&quot; or &quot;full&quot;, then flip the kernel for convolution.
     image = np.asarray(image, dtype=np.float64)
@@ -76,7 +75,7 @@ dy = convolve_two_loops(selfie, Dy)</code></pre>
             </div>
             <div class="image-card">
                 <a href="assets/selfie_box.jpg"><img src="assets/selfie_box.jpg" alt="9 × 9 box filter" width="192" height="256" loading="lazy"></a>
-                <p class="caption">9 × 9 box filter</p>
+                <p class="caption">9 x 9 box filter</p>
             </div>
             <div class="image-card">
                 <a href="assets/selfie_dx.jpg"><img src="assets/selfie_dx.jpg" alt="Dₓ response; gray = zero" width="192" height="256" loading="lazy"></a>
