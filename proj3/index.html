@@ -1,0 +1,293 @@
+<!DOCTYPE html>
+<html lang="en">
+    <head>
+        <meta charset="UTF-8">
+        <meta name="viewport" content="width=device-width, initial-scale=1.0">
+        <title>Project 3 · Flow Models</title>
+    <link rel="stylesheet" href="../style.css?v=proj3-simple-1">
+    </head>
+    <body class="project3">
+        <header>
+            <h1>CS 180</h1>
+            <p>Computer Vision and Computational Photography</p>
+        </header>
+        <nav class="nav-tabs" aria-label="Projects">
+            <a href="../index.html">Home</a>
+            <a href="../proj0/index.html">Project 0</a>
+            <a href="../proj1/index.html">Project 1</a>
+            <a href="../proj2/index.html">Project 2</a>
+            <a href="index.html" class="active" aria-current="page">Project 3</a>
+        </nav>
+        <main class="content-box">
+            <h2>Project 3: Flow Models</h2>
+            <h2 id="part-a" class="part-title">Part A: Exploring the Power of Flow Models</h2>
+            <p>In Part A, I used a pretrained flow model to denoise, generate, and edit some images. I started by mixing noise with an image, then implemented Euler sampling and classifier-free guidance. I also combined velocity predictions to make visual anagrams and hybrid images.</p>
+            <section aria-labelledby="training">
+                <h3 id="training">1.1: Constructing Noisy Training Inputs</h3>
+                <p>The noisy input is a mix of Gaussian noise ε and the original image x<sub>1</sub>, using <span class="math">x<sub>t</sub> = (1 − t)ε + t x<sub>1</sub></span>. At t = 0, the input is pure noise. At t = 1, it is the original image.</p>
+                <p>I sampled one noise tensor with seed 180 and reused it at t = 0.25, 0.50, and 0.75. This kept the noise pattern the same, so only the amount of the original image changed.</p>
+                <figure>
+                    <img src="assets/parta_training_inputs.png" alt="Cat photograph and noisy inputs at t = 0.25, 0.50, and 0.75" width="1593" height="411"><figcaption>Cat photograph and noisy inputs at t = 0.25, 0.50, and 0.75</figcaption>
+                </figure>
+            </section>
+            <section aria-labelledby="denoising">
+                <h3 id="denoising">1.2: Classical Denoising</h3>
+                <p>I first divided each noisy image by t to bring the image back to its original scale, then applied a Gaussian blur: <span class="math">x̂<sub>1</sub> = G<sub>σ</sub>(x<sub>t</sub> / t)</span>. Dividing by t also scales the noise by (1 − t) / t, so lower t makes denoising harder. More blur removes more noise, but also loses detail.</p>
+                <p>For each input, I tried σ = 1, 2, 4, 8, and 16 and kept the result with the lowest MSE compared to the original. I calculated the MSE before clipping the pixel values for display.</p>
+                <figure>
+                    <img src="assets/parta_blur_0_25.png" alt="Noisy input and Gaussian blur at t = 0.25, σ = 8" width="793" height="411"><figcaption>Noisy input and Gaussian blur at t = 0.25, σ = 8</figcaption>
+                </figure>
+                <figure>
+                    <img src="assets/parta_blur_0_5.png" alt="Noisy input and Gaussian blur at t = 0.50, σ = 4" width="793" height="411"><figcaption>Noisy input and Gaussian blur at t = 0.50, σ = 4</figcaption>
+                </figure>
+                <figure>
+                    <img src="assets/parta_blur_0_75.png" alt="Noisy input and Gaussian blur at t = 0.75, σ = 2" width="793" height="411"><figcaption>Noisy input and Gaussian blur at t = 0.75, σ = 2</figcaption>
+                </figure>
+                <p>The best blur strengths were σ = 8, 4, and 2 at t = 0.25, 0.50, and 0.75. The strongest blur gets rid of much of the noise, but also blurs Miya’s fur and face. At t = 0.75, less blur is needed, so more of her fur pattern comes through.</p>
+                <h3 id="one-step">1.3: One-Step Denoising</h3>
+                <p>I used the model’s velocity prediction to estimate the image at t = 1 in one step, <span class="math">x̂<sub>1</sub> = x<sub>t</sub> + (1 − t)v<sub>θ</sub>(x<sub>t</sub>, t, c)</span>, with the prompt “a high quality photo.”</p>
+                <p>This assumes the predicted velocity is still useful for the rest of the path. I used the same noisy inputs from Section 1.1 for all three comparisons.</p>
+                <figure>
+                    <img src="assets/parta_one_step_0_25.png" alt="Original, noisy input at t = 0.25, and one-step estimate" width="1193" height="411"><figcaption>Original, noisy input at t = 0.25, and one-step estimate</figcaption>
+                </figure>
+                <figure>
+                    <img src="assets/parta_one_step_0_5.png" alt="Original, noisy input at t = 0.50, and one-step estimate" width="1193" height="411"><figcaption>Original, noisy input at t = 0.50, and one-step estimate</figcaption>
+                </figure>
+                <figure>
+                    <img src="assets/parta_one_step_0_75.png" alt="Original, noisy input at t = 0.75, and one-step estimate" width="1193" height="411"><figcaption>Original, noisy input at t = 0.75, and one-step estimate</figcaption>
+                </figure>
+                <p>At t = 0.25, I can still make out a cat, but the fur is smoother and loses some of the tortoiseshell pattern. At t = 0.50 and 0.75, more of the original face and fur markings remain. The model brings back much more detail than Gaussian blur.</p>
+                <h3 id="velocity">1.4: Visualizing Velocity</h3>
+                <p>Because I knew both the original image and the sampled noise, I could calculate the exact path velocity x<sub>1</sub> − ε. I compared the predicted update, <span class="math">Δ<sub>pred</sub> = (1 − t)v<sub>θ</sub></span>, with the update that would recover the original image, <span class="math">Δ<sub>gt</sub> = (1 − t)(x<sub>1</sub> − ε) = x<sub>1</sub> − x<sub>t</sub></span>.</p>
+                <p>I measured the error as the RMS difference between the updates across RGB, before any display scaling. The update panels use the same symmetric scale, with gray representing zero, and the error maps also share a scale. Brighter areas mean larger errors. Since there are no numeric colorbars, the maps are mainly useful for seeing where the errors are.</p>
+                <figure>
+                    <img src="assets/parta_velocity_original.png" alt="Original tortoiseshell cat photograph" width="512" height="512"><figcaption>Original cat photograph</figcaption>
+                </figure>
+                <figure>
+                    <img src="assets/parta_velocity_0_25.png" alt="Noisy input, predicted update, target update, and RGB RMS error at t = 0.25" width="1558" height="411"><figcaption>Noisy input, predicted update, target update, and RGB RMS error at t = 0.25</figcaption>
+                </figure>
+                <figure>
+                    <img src="assets/parta_velocity_0_50.png" alt="Noisy input, predicted update, target update, and RGB RMS error at t = 0.50" width="1558" height="411"><figcaption>Noisy input, predicted update, target update, and RGB RMS error at t = 0.50</figcaption>
+                </figure>
+                <figure>
+                    <img src="assets/parta_velocity_0_75.png" alt="Noisy input, predicted update, target update, and RGB RMS error at t = 0.75" width="1558" height="411"><figcaption>Noisy input, predicted update, target update, and RGB RMS error at t = 0.75</figcaption>
+                </figure>
+                <p>The predicted and target updates look fairly similar. The biggest differences are around Miya’s face and fur. The error map is brighter at t = 0.25 and gets darker as more of the original image remains.</p>
+                <h3 id="euler">1.5: Iterative Denoising with Euler Sampling</h3>
+                <p>I started from the saved t = 0.50 input and took 25 Euler steps with h = 0.02. Each step follows <span class="math">x<sub>t+h</sub> = x<sub>t</sub> + h v<sub>θ</sub>(x<sub>t</sub>, t, c)</span>, calculating a new velocity at the updated image and time.</p>
+                <p>The sampler shortens the last step if needed to stop exactly at t = 1. I saved the starting image, every fifth step, and the final image. I then compared the result with Gaussian blur and one-step denoising, using the same input and generic prompt.</p>
+                <figure>
+                    <img src="assets/parta_trajectory.png" alt="Euler trajectory: t = 0.50, 0.60, 0.70, 0.80, 0.90, 1.00" width="1193" height="811"><figcaption>Euler trajectory: t = 0.50, 0.60, 0.70, 0.80, 0.90, 1.00</figcaption>
+                </figure>
+                <figure>
+                    <img src="assets/parta_comparison.png" alt="Original, Gaussian blur, one-step estimate, and Euler denoising" width="1593" height="411"><figcaption>Original, Gaussian blur, one-step estimate, and Euler denoising</figcaption>
+                </figure>
+                <table>
+                    <caption>Reconstruction MSE at t = 0.50 (raw normalized tensors)</caption>
+                    <tbody>
+                        <tr>
+                            <th scope="row">Gaussian blur</th><td>0.017824</td>
+                        </tr>
+                        <tr>
+                            <th scope="row">One-step denoising</th><td>0.006916</td>
+                        </tr>
+                        <tr>
+                            <th scope="row">Euler denoising</th><td>0.008604</td>
+                        </tr>
+                    </tbody>
+                </table>
+                <p>Euler sampling gradually clears up the grain while keeping Miya recognizable. For this image, one-step denoising actually gets closest to the original: its MSE is 0.006916, compared with 0.008604 for Euler and 0.017824 for blur. More steps did not give a closer pixelwise match here.</p>
+            </section>
+            <section aria-labelledby="generation">
+                <h3 id="generation">1.6: Generating Images from Noise</h3>
+                <p>Starting at t = 0 lets the same sampler generate an image from noise. I generated five images with the prompt “a high quality photo,” seeds 180–184, and 50 Euler steps per image.</p>
+                <figure>
+                    <img src="assets/parta_conditional_samples.png" alt="Five conditional samples with seeds 180–184" width="1602" height="811"><figcaption>Five conditional samples with seeds 180–184</figcaption>
+                </figure>
+                <p>All five images show people, with different poses, clothes, and styles. Even with such a general photo prompt, I mostly got portraits in this small batch.</p>
+                <h3 id="cfg">2.1: Classifier-Free Guidance</h3>
+                <p>I ran the model with the photo prompt and with an empty prompt at the same image and time. I then combined the predictions using <span class="math">v<sub>cfg</sub> = v<sub>c</sub> + w(v<sub>c</sub> − v<sub>u</sub>)</span> with w = 7.</p>
+                <p>With this formula, w = 0 gives the ordinary conditional prediction. I reused seeds 180–184 from Section 1.6, so each comparison starts from the same noise. Guidance pushes the prediction further in the direction suggested by the prompt.</p>
+                <figure>
+                    <img src="assets/parta_cfg_samples.png" alt="Five CFG samples with seeds 180–184 and w = 7" width="1602" height="811"><figcaption>Five CFG samples with seeds 180–184 and w = 7</figcaption>
+                </figure>
+                <p>With CFG, the faces look clearer and the images are more consistent. The people and compositions change even though each seed starts from the same noise. The results look cleaner here, but the framing is also more similar across the five images.</p>
+            </section>
+            <section aria-labelledby="editing">
+                <h3 id="editing">3.1: Image-to-Image Editing</h3>
+                <p>I mixed each input image with noise at a chosen starting time, then used CFG to continue to t = 1. I tried <span class="math">t<sub>start</sub> ∈ {0.02, 0.04, 0.06, 0.10, 0.14, 0.25, 0.50}</span>, keeping the noise the same across each image’s sweep. All edits used h = 0.02, w = 7, and the generic photo prompt.</p>
+                <p>Lower starting times leave less of the original image, so the model has more room to change it. Higher starting times keep more of the input. I tried this on the supplied Campanile image, my cat photo, and my castle photo.</p>
+                <figure>
+                    <img src="assets/parta_edit_campanile.png" alt="Campanile: original and seven generic-prompt edits" width="1593" height="811"><figcaption>Campanile: original and seven generic-prompt edits</figcaption>
+                </figure>
+                <figure>
+                    <img src="assets/parta_edit_my_image_1.png" alt="Cat photograph: original and seven generic-prompt edits" width="1593" height="811"><figcaption>Cat photograph: original and seven generic-prompt edits</figcaption>
+                </figure>
+                <figure>
+                    <img src="assets/parta_edit_my_image_2.png" alt="Castle photograph: original and seven generic-prompt edits" width="1593" height="811"><figcaption>Castle photograph: original and seven generic-prompt edits</figcaption>
+                </figure>
+                <p>At the lowest starting times, the Campanile becomes a simple pillar or tower. Its clock and upper details come back around t = 0.25–0.50. Miya turns into a portrait or wallet at low t, while her pose and fur return at t = 0.25–0.50. The castle becomes billboards before its towers reappear around t = 0.14. All three keep more of their original structure at higher starting times.</p>
+                <h4>Editing Hand-Drawn and Web Images</h4>
+                <p>I also tried the same sweep on a web photo and two drawings to see how the photo prompt would handle them.</p>
+                <figure>
+                    <img src="assets/parta_edit_web_image.png" alt="Web photograph: two people on a grassy hill: original and seven edits" width="1593" height="811"><figcaption>Web photo of two people on a grassy hill: original and seven edits</figcaption>
+                </figure>
+                <figure>
+                    <img src="assets/parta_edit_drawing_1.png" alt="Drawing input: cat in a cup: original and seven edits" width="1593" height="811"><figcaption>Cat-in-a-bag drawing: original and seven edits</figcaption>
+                </figure>
+                <figure>
+                    <img src="assets/parta_edit_drawing_2.png" alt="Drawing input: sleeping person: original and seven edits" width="1593" height="811"><figcaption>Sleeping person drawing: original and seven edits</figcaption>
+                </figure>
+                <p>At the lowest starting times, the web photo turns into city scenes and loses the people entirely. The grassy hill and two figures come back around t = 0.10–0.14. The cat drawing becomes a portrait or metallic object at t = 0.02–0.04, then quickly returns to line art. The sleeping person drawing first looks like a framed picture, then recovers the bed and sleeping figure. At higher t, the drawings mostly stay drawings, even with the photo prompt.</p>
+                <h3 id="text-editing">3.2: Text-Guided Image Editing</h3>
+                <p>I used the Campanile and my two photos again, but changed the prompt to describe what I wanted to create. I kept the starting times, noise seeds, step size, and guidance weight the same as in Section 3.1.</p>
+                <p>The prompts are “A photograph of a rocket on a launch pad” for the Campanile, “A donut resting on a plate” for the cat photo, and “A castle floating in the sky” for the castle photo.</p>
+                <figure>
+                    <img src="assets/parta_text_edit_campanile.png" alt="Campanile with prompt: A photograph of a rocket on a launch pad" width="1580" height="811"><figcaption>Campanile with prompt: A photograph of a rocket on a launch pad</figcaption>
+                </figure>
+                <figure>
+                    <img src="assets/parta_text_edit_my_image_1.png" alt="Cat photograph with prompt: A donut resting on a plate" width="1580" height="811"><figcaption>Cat photograph with prompt: A donut resting on a plate</figcaption>
+                </figure>
+                <figure>
+                    <img src="assets/parta_text_edit_my_image_2.png" alt="Castle photograph with prompt: A castle floating in the sky" width="1580" height="811"><figcaption>Castle photograph with prompt: A castle floating in the sky</figcaption>
+                </figure>
+                <p>The rocket prompt gives rockets at low starting times, then a mix of rocket and tower shapes in the middle. At t = 0.50, the Campanile mostly returns. The donut prompt replaces Miya at low and middle times; at t = 0.25, the result mixes the donut and cat, and at t = 0.50, Miya is mostly back. The floating castle prompt gives colorful floating islands at t = 0.02–0.04, while higher starting times keep the original castle’s layout.</p>
+            </section>
+            <section aria-labelledby="illusions">
+                <h3 id="illusions">3.3: Visual Anagrams</h3>
+                <p>At each Euler step, I predicted a guided velocity with the first prompt in the upright view. I then rotated the image by 180°, predicted with the second prompt, rotated that prediction back, and averaged the two: <span class="math">v = ½[v<sub>cfg</sub>(x, t, c<sub>a</sub>) + R(v<sub>cfg</sub>(R(x), t, c<sub>b</sub>))]</span>.</p>
+                <p>R flips both spatial axes while leaving the RGB and batch axes alone. I tried two prompt pairs: an old man / people around a campfire, and a snowy mountain village / a horse. Both views are shown below.</p>
+                <figure>
+                    <img src="assets/parta_anagram_views_0.png" alt="Old man upright / people around a campfire rotated 180°" width="793" height="411"><figcaption>Old man upright / people around a campfire rotated 180°</figcaption>
+                </figure>
+                <figure>
+                    <img src="assets/parta_anagram_views_1.png" alt="Snowy mountain village upright / horse rotated 180°" width="793" height="411"><figcaption>Snowy mountain village upright / horse rotated 180°</figcaption>
+                </figure>
+                <p>The first image looks like an old man upright and people around a bright campfire when rotated 180°. The second is less clear: I can make out a faint snowy village upright, but the horse is easier to see in the rotated view.</p>
+                <h3 id="hybrids">3.4: Hybrid Images</h3>
+                <p>I mixed the low frequencies from one guided velocity prediction with the high frequencies from another using <span class="math">v = G<sub>σ</sub>(v<sub>a</sub>) + v<sub>b</sub> − G<sub>σ</sub>(v<sub>b</sub>)</span>. I calculated both predictions from the same image and time, then used the combined velocity for the Euler update.</p>
+                <p>I used a Gaussian with σ = 16 and a 265 × 265 kernel. Prompt A controls what should show up from far away, while prompt B controls the close-up detail. I tried skull / waterfall and cat / forest, showing each at full size and as a 64 × 64 distant view.</p>
+                <div class="hybrid-grid">
+                    <figure>
+                        <img src="assets/parta_hybrid_0_near.png" alt="Near view · a lithograph of a waterfall" width="512" height="512"><figcaption>Near view · a lithograph of a waterfall</figcaption>
+                    </figure>
+                    <figure>
+                        <img src="assets/parta_hybrid_0_distant.png" alt="64 × 64 distant view · a lithograph of a skull" width="64" height="64" class="distant-view"><figcaption>64 × 64 distant view · a lithograph of a skull</figcaption>
+                    </figure>
+                </div>
+                <div class="hybrid-grid">
+                    <figure>
+                        <img src="assets/parta_hybrid_1_near.png" alt="Near view · a lithograph of a forest" width="512" height="512"><figcaption>Near view · a lithograph of a forest</figcaption>
+                    </figure>
+                    <figure>
+                        <img src="assets/parta_hybrid_1_distant.png" alt="64 × 64 distant view · a lithograph of a cat" width="64" height="64" class="distant-view"><figcaption>64 × 64 distant view · a lithograph of a cat</figcaption>
+                    </figure>
+                </div>
+                <p>The waterfall and forest are clear up close. In the smaller view, the waterfall has a somewhat skull-like pattern, but it is hard to make out. The forest still looks like trees, and I can’t clearly see the intended cat. Overall, the hybrid effect was weak in both examples.</p>
+            </section>
+            <section aria-labelledby="part-b">
+                <h2 id="part-b" class="part-title">Part B: Flow Matching from Scratch</h2>
+                <p>In Part B, I trained UNets on MNIST, first to denoise images and then to generate digits through several steps. The images are 28 × 28 grayscale tensors in [0, 1]. I trained only on the 60,000 training images and used the test set for visual checks.</p>
+                <h3 id="b-unet">B 1.1: Implementing the UNet</h3>
+                <p>The UNet starts with a ConvBlock and two DownBlocks, taking the image size from 28 to 14 to 7. Average pooling shrinks the bottleneck to 1 × 1, and a transposed convolution brings it back to 7 × 7. Two UpBlocks return it to the original size, with skip connections at 7, 14, and 28 pixels.</p>
+                <p>Each Conv has a 3 × 3 convolution, batch normalization, and GELU. DownConv uses stride 2, while UpConv uses a 4 × 4 transposed convolution with stride 2. A ConvBlock is two Convs. The network ends with a 3 × 3 convolution that outputs one channel, without a sigmoid or clipping.</p>
+                <h3 id="b-denoising">B 1.2: Training a Single-Step Denoiser</h3>
+                <p>I added Gaussian noise to a clean digit using <span class="math">z = x + σε</span>, with σ ∈ {0, 0.2, 0.4, 0.5, 0.6, 0.8, 1.0}. I kept the digit and noise pattern the same and only changed σ.</p>
+                <figure>
+                    <img src="assets/b_noise_levels.png" alt="One held-out digit with σ = 0, 0.2, 0.4, 0.5, 0.6, 0.8, and 1.0; the same noise pattern is reused." width="1043" height="196"><figcaption>Same test digit and noise pattern, with σ = 0, 0.2, 0.4, 0.5, 0.6, 0.8, and 1.0.</figcaption>
+                </figure>
+                <h4>B 1.2.1: Training at σ = 0.5</h4>
+                <p>I trained a D = 128 UNet for five epochs with shuffled batches of 256 and Adam at 10<sup>−4</sup>. Each batch got fresh noise. The loss measures how far the predicted image is from the clean target: <span class="math">L = E[‖D<sub>θ</sub>(x + 0.5ε) − x‖²]</span>.</p>
+                <p>I plotted the training loss after every update. At epochs 1 and 5, I checked the same test digits with the same noise, showing the clean, noisy, and denoised images in separate rows.</p>
+                <figure>
+                    <img src="assets/b_denoise_loss.png" alt="Single-step denoiser: per-step training MSE and a 100-step moving average over five epochs." width="788" height="290"><figcaption>Denoiser training loss over five epochs, with a 100-step moving average.</figcaption>
+                </figure>
+                <figure>
+                    <img src="assets/b_denoise_epoch1.png" alt="Epoch 1 at σ = 0.5: clean digits 0–9, fixed noisy inputs, and denoised outputs." width="980" height="334"><figcaption>Epoch 1, σ = 0.5: clean digits 0–9 / noisy inputs / denoised outputs.</figcaption>
+                </figure>
+                <figure>
+                    <img src="assets/b_denoise_epoch5.png" alt="Epoch 5 at σ = 0.5: the same clean digits and noisy inputs as epoch 1." width="980" height="334"><figcaption>Epoch 5, σ = 0.5: same clean digits and noise as epoch 1.</figcaption>
+                </figure>
+                <p>After one epoch, most of the background noise is already gone and the digits are recognizable. Some strokes are still soft or distorted, especially in the 5, 8, and 9. After five epochs, the edges are cleaner and the 8 and 9 look closer to their targets. The plotted training loss keeps dropping and ends at about 0.008 MSE.</p>
+                <h4>B 1.2.2: Out-of-Distribution Testing</h4>
+                <p>I then tested the trained model on the same digit with different noise levels. I kept the noise pattern fixed and varied σ over the same seven values. The model had only been trained at σ = 0.5 for five epochs. Each column shows the clean digit, noisy input, and denoised result.</p>
+                <figure>
+                    <img src="assets/b_ood.png" alt="After five epochs: clean / noisy / denoised rows, with σ increasing from 0 to 1 across columns." width="694" height="334"><figcaption>After five epochs: clean / noisy / denoised rows, with σ increasing from 0 to 1 across columns.</figcaption>
+                </figure>
+                <p>The result still looks like a 0 from σ = 0 through σ = 0.8, though the loop’s thickness and shape change. At σ = 1.0, some background noise remains and the result starts to look like a 9. With this much noise, the model fills in plausible strokes but can end up recovering the wrong digit.</p>
+                <h3 id="b-pure-noise">B 1.2.3: Denoising Pure Noise</h3>
+                <p>I trained a new D = 128 UNet for five epochs with the same batch size and optimizer, but gave it pure Gaussian noise as input. The noise was independent of the clean target. Below are the outputs for 40 fixed noise inputs after epochs 1 and 5, along with the training loss and average training digit.</p>
+                <p>The noise doesn’t tell the model which digit it should predict. Because the noise and target are independent, E[X | ε] = E[X], so the best prediction under MSE is the average training image.</p>
+                <figure>
+                    <img src="assets/b_pure_noise_loss.png" alt="Pure-noise denoiser: training MSE over five epochs, with a 100-step moving average." width="788" height="290"><figcaption>Pure-noise training loss over five epochs, with a 100-step moving average.</figcaption>
+                </figure>
+                <figure>
+                    <img src="assets/b_pure_noise_epoch1.png" alt="Epoch 1: 40 independent noise inputs in the top four rows and their predictions in the bottom four rows." width="1102" height="909"><figcaption>Epoch 1: 40 noise inputs in the top four rows, model outputs in the bottom four.</figcaption>
+                </figure>
+                <figure>
+                    <img src="assets/b_pure_noise_epoch5.png" alt="Epoch 5: the same 40 noise inputs and their predictions." width="1102" height="909"><figcaption>Epoch 5: the same 40 noise inputs and their predictions.</figcaption>
+                </figure>
+                <figure>
+                    <img src="assets/b_training_mean.png" alt="Mean of the 60,000 MNIST training images, shown as a reference for the pure-noise outputs." width="533" height="190"><figcaption>Average of the 60,000 MNIST training images.</figcaption>
+                </figure>
+                <p>Changing the input noise barely changes the output. Both checkpoints give blurry oval shapes with overlapping strokes, much like the average training digit. By epoch 5, the outputs look even more alike. The plotted loss drops quickly and settles around 0.07. This fits the MSE explanation: predicting an average reduces error across unrelated targets, but doesn’t give separate examples of digits 0–9.</p>
+                <h3 id="b-time">B 2.1–2.3: Time-Conditioned Flow Matching</h3>
+                <p>For each training image, I picked a random time and mixed Gaussian noise x<sub>0</sub> with the digit x<sub>1</sub> using <span class="math">x<sub>t</sub> = (1 − t)x<sub>0</sub> + tx<sub>1</sub></span>. The model learns to predict the velocity x<sub>1</sub> − x<sub>0</sub> by minimizing <span class="math">L = E[‖u<sub>θ</sub>(x<sub>t</sub>, t) − (x<sub>1</sub> − x<sub>0</sub>)‖²]</span>.</p>
+                <p>To add time conditioning, I passed the scalar time through two FCBlocks with 2D and D output channels. Their outputs multiply the bottleneck and first upsampled features. Each FCBlock is Linear → GELU → Linear.</p>
+                <p>I trained for ten epochs with D = 64, batch size 64, and Adam starting at 10<sup>−2</sup>. I lowered the learning rate after each epoch using ExponentialLR with a factor of 0.1<sup>1/10</sup>. For sampling, I started from Gaussian noise and took 50 Euler steps, reusing the same 40 initial noises at epochs 1, 5, and 10.</p>
+                <figure>
+                    <img src="assets/b_time_loss.png" alt="Time-conditioned flow: training MSE across ten epochs; the orange line is a 100-step moving average." width="790" height="290"><figcaption>Time-conditioned training loss over ten epochs. Orange: 100-step moving average.</figcaption>
+                </figure>
+                <figure>
+                    <img src="assets/b_time_epoch1.png" alt="Time-conditioned flow, epoch 1: 40 samples from seeds 180–219 using 50 Euler updates." width="1029" height="449"><figcaption>Time-conditioned model, epoch 1: 40 samples, seeds 180–219, 50 Euler steps.</figcaption>
+                </figure>
+                <figure>
+                    <img src="assets/b_time_epoch5.png" alt="Time-conditioned flow, epoch 5: the same 40 initial noises and 50 Euler updates." width="1029" height="449"><figcaption>Time-conditioned model, epoch 5: same 40 starting noises and 50 Euler steps.</figcaption>
+                </figure>
+                <figure>
+                    <img src="assets/b_time_epoch10.png" alt="Time-conditioned flow, epoch 10: the same 40 initial noises and 50 Euler updates." width="1029" height="449"><figcaption>Time-conditioned model, epoch 10: same 40 starting noises and 50 Euler steps.</figcaption>
+                </figure>
+                <p>After epoch 1, many samples are broken strokes or shapes that only vaguely look like digits. By epoch 5, more of them have connected strokes and recognizable loops. Epoch 10 looks cleaner, though a few digits are still ambiguous. Different starting noises now give different digits, with variation in slant and stroke width. The training loss drops sharply at first, then improves more gradually.</p>
+                <h3 id="b-class">B 2.4–2.6: Class-Conditioned Flow Matching</h3>
+                <p>I added the digit label as a ten-dimensional one-hot vector and passed it through two more FCBlocks. I combined the class and time information at the two conditioning points using c<sub>1</sub> · h + t<sub>1</sub> and c<sub>2</sub> · h + t<sub>2</sub>. During training, I randomly zeroed out the whole class vector with probability 0.1.</p>
+                <p>I kept D = 64, ten epochs, and the same batch size, optimizer, and learning-rate schedule as the time-only model. At each checkpoint, I generated four examples of every digit, with columns 0–9. For sampling, I used <span class="math">u<sub>cfg</sub> = u<sub>uncond</sub> + γ(u<sub>cond</sub> − u<sub>uncond</sub>)</span> with γ = 5.</p>
+                <p>Both predictions use the same image and time. With Part B’s formula, γ = 1 gives ordinary conditional sampling. I used 300 Euler steps and kept the labels and starting noises fixed at epochs 1, 5, and 10.</p>
+                <figure>
+                    <img src="assets/b_class_loss.png" alt="Class-conditioned flow: per-step training MSE and a 100-step moving average over ten epochs." width="790" height="290"><figcaption>Class-conditioned training loss over ten epochs, with a 100-step moving average.</figcaption>
+                </figure>
+                <figure>
+                    <img src="assets/b_class_epoch1.png" alt="Class-conditioned flow, epoch 1: four examples per digit; columns 0–9, 300 Euler updates, guidance scale 5." width="1029" height="449"><figcaption>Class-conditioned model, epoch 1: four per digit, columns 0–9, 300 Euler steps, guidance scale 5.</figcaption>
+                </figure>
+                <figure>
+                    <img src="assets/b_class_epoch5.png" alt="Class-conditioned flow, epoch 5: the same labels and initial noises." width="1029" height="449"><figcaption>Class-conditioned model, epoch 5: same labels and starting noises.</figcaption>
+                </figure>
+                <figure>
+                    <img src="assets/b_class_epoch10.png" alt="Class-conditioned flow, epoch 10: the same labels and initial noises." width="1029" height="449"><figcaption>Class-conditioned model, epoch 10: same labels and starting noises.</figcaption>
+                </figure>
+                <p>With class labels, the intended digits are recognizable even at epoch 1, though some strokes are thick, broken, or misshapen. By epochs 5 and 10, the columns clearly follow the requested digits from 0 to 9. The four rows still have different slants, loop shapes, and stroke thicknesses. These grids look cleaner than the time-only results, though they also use 300 guided steps instead of 50 unguided steps.</p>
+                <h3 id="b-no-scheduler">B 2.6: Removing the Learning-Rate Scheduler</h3>
+                <p>I trained one more class-conditioned model from scratch without a scheduler, using Adam at a constant 3 × 10<sup>−3</sup>. I kept the architecture, epochs, batch size, class dropout, initial seed, and sampling noises the same so I could compare the two runs.</p>
+                <p>To make up for removing the scheduler, I lowered the constant learning rate to 0.003. This is about halfway between 0.01 and 0.001 on a log scale. It gives smaller updates early in training and larger updates near the end compared to the scheduled run. Both models use the same sampling seeds and labels.</p>
+                <figure>
+                    <img src="assets/b_no_scheduler_loss.png" alt="Class-conditioned flow without a scheduler: training MSE at constant Adam learning rate 0.003." width="790" height="290"><figcaption>Training loss without a scheduler, using Adam at a fixed learning rate of 0.003.</figcaption>
+                </figure>
+                <figure>
+                    <img src="assets/b_no_scheduler_epoch1.png" alt="No scheduler, epoch 1: four examples per digit; columns 0–9, 300 Euler updates, guidance scale 5." width="1029" height="449"><figcaption>No scheduler, epoch 1: four per digit, columns 0–9, 300 Euler steps, guidance scale 5.</figcaption>
+                </figure>
+                <figure>
+                    <img src="assets/b_no_scheduler_epoch5.png" alt="No scheduler, epoch 5: the same labels and initial noises." width="1029" height="449"><figcaption>No scheduler, epoch 5: same labels and starting noises.</figcaption>
+                </figure>
+                <figure>
+                    <img src="assets/b_no_scheduler_epoch10.png" alt="No scheduler, epoch 10: the same labels and initial noises." width="1029" height="449"><figcaption>No scheduler, epoch 10: same labels and starting noises.</figcaption>
+                </figure>
+                <figure>
+                    <img src="assets/b_scheduler_comparison.png" alt="Epoch 10 comparison: scheduled model in the top four rows, constant-rate model in the bottom four rows. Corresponding positions start from the same noise." width="1102" height="909"><figcaption>Epoch 10: scheduled model in the top four rows, fixed-rate model in the bottom four. Matching positions start from the same noise.</figcaption>
+                </figure>
+                <figure>
+                    <img src="assets/b_scheduler_loss_comparison.png" alt="Scheduled and constant-rate training MSE, both smoothed over 100 optimizer steps." width="790" height="290"><figcaption>Training loss with and without the scheduler, both smoothed over 100 steps.</figcaption>
+                </figure>
+                <p>The constant-rate model still makes recognizable digits for every class. In these 40 samples, the epoch-10 results look about as good as the scheduled model, with some differences in stroke shape, especially for 2 and 6. Its smoothed loss is lower early on, then the curves get close, with the scheduled run ending slightly lower. A fixed rate of 0.003 was enough to keep the digits readable in this run.</p>
+            </section>
+        </main>
+    </body>
+</html>

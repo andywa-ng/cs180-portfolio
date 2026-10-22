@@ -217,6 +217,59 @@ p {
     margin-bottom: 0;
 }
 
+/* Project 3 report figures and comparisons. */
+.project3 .part-title {
+    margin-top: 2.5rem;
+}
+
+.project3 figure {
+    margin: 1.5rem 0 2rem;
+    text-align: center;
+    break-inside: avoid;
+}
+
+.project3 figure img {
+    display: block;
+    width: auto;
+    height: auto;
+    max-width: 100%;
+    margin: 0 auto;
+}
+
+.project3 figcaption {
+    margin-top: 0.5rem;
+    font-size: 0.9rem;
+    line-height: 1.45;
+}
+
+.project3 .hybrid-grid {
+    display: grid;
+    grid-template-columns: minmax(0, 512px) minmax(80px, 1fr);
+    gap: 1.25rem;
+    align-items: center;
+}
+
+.project3 table {
+    width: 100%;
+    border-collapse: collapse;
+    margin: 1.5rem 0;
+}
+
+.project3 th, .project3 td {
+    padding: 0.6rem;
+    text-align: left;
+    border-bottom: 1px solid #ccc;
+}
+
+@media (max-width: 720px) {
+    body.project3, .project3 .content-box {
+        padding: 1rem;
+    }
+    .project3 .hybrid-grid {
+        grid-template-columns: minmax(0, 1fr);
+    }
+}
+
 /* Print Styles */
 @media print {
     body {
@@ -229,5 +282,11 @@ p {
     }
     .nav-tabs {
         display: none;
+    }
+    .project3 .part-title, .project3 h3, .project3 h4 {
+        break-after: avoid;
+    }
+    .project3 #part-b {
+        break-before: page;
     }
 }
