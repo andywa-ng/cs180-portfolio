@@ -39,6 +39,7 @@ header h1 {
 /* Tab Navigation */
 .nav-tabs {
     display: flex;
+    flex-wrap: wrap;
     gap: 0;
     border-bottom: 4px solid var(--border-color);
     margin-bottom: 2rem;
@@ -217,18 +218,18 @@ p {
     margin-bottom: 0;
 }
 
-/* Project 3 report figures and comparisons. */
+/* Project report figures and comparisons. */
 .project3 .part-title {
     margin-top: 2.5rem;
 }
 
-.project3 figure {
+.project3 figure, .project4 figure {
     margin: 1.5rem 0 2rem;
     text-align: center;
     break-inside: avoid;
 }
 
-.project3 figure img {
+.project3 figure img, .project4 figure img {
     display: block;
     width: auto;
     height: auto;
@@ -236,7 +237,7 @@ p {
     margin: 0 auto;
 }
 
-.project3 figcaption {
+.project3 figcaption, .project4 figcaption {
     margin-top: 0.5rem;
     font-size: 0.9rem;
     line-height: 1.45;
@@ -249,20 +250,20 @@ p {
     align-items: center;
 }
 
-.project3 table {
+.project3 table, .project4 table {
     width: 100%;
     border-collapse: collapse;
     margin: 1.5rem 0;
 }
 
-.project3 th, .project3 td {
+.project3 th, .project3 td, .project4 th, .project4 td {
     padding: 0.6rem;
     text-align: left;
     border-bottom: 1px solid #ccc;
 }
 
 @media (max-width: 720px) {
-    body.project3, .project3 .content-box {
+    body.project3, .project3 .content-box, body.project4, .project4 .content-box {
         padding: 1rem;
     }
     .project3 .hybrid-grid {
@@ -283,7 +284,7 @@ p {
     .nav-tabs {
         display: none;
     }
-    .project3 .part-title, .project3 h3, .project3 h4 {
+    .project3 .part-title, .project3 h3, .project3 h4, .project4 h3, .project4 h4 {
         break-after: avoid;
     }
     .project3 #part-b {

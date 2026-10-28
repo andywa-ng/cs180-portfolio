@@ -1,0 +1,156 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta name="description" content="Homographies, image rectification, and three photo mosaics for CS 180 Project 4A.">
+    <title>Project 4 · Image Warping and Mosaicing</title>
+    <link rel="stylesheet" href="../style.css">
+</head>
+<body class="project4">
+    <header>
+        <h1>CS 180</h1>
+        <p>Computer Vision and Computational Photography</p>
+    </header>
+
+    <nav class="nav-tabs" aria-label="Projects">
+        <a href="../index.html">Home</a>
+        <a href="../proj0/index.html">Project 0</a>
+        <a href="../proj1/index.html">Project 1</a>
+        <a href="../proj2/index.html">Project 2</a>
+        <a href="../proj3/index.html">Project 3</a>
+        <a href="index.html" class="active" aria-current="page">Project 4</a>
+    </nav>
+
+    <main class="content-box">
+        <h2>Project 4: Image Warping and Mosaicing</h2>
+        <p>For Part A, I used homographies to combine overlapping photos into mosaics and straighten two posters using rectification.</p>
+
+        <section aria-labelledby="photos">
+            <h3 id="photos">A.1: Photos</h3>
+            <p>I used three sets of images: the Gateway, the Undergraduate Academic Building, and my living room. I took 3 photos of the Undergraduate Academic Building instead of 2, so I used the center photo as the reference. I also reused the living room photos for the two poster rectifications.</p>
+
+            <h4>Gateway Building</h4>
+            <figure>
+                <a href="assets/gateway_sources.png"><img src="assets/gateway_sources.png" alt="Gateway Building: left and right photos." width="998" height="545" loading="lazy"></a>
+                <figcaption>Gateway Building: left and right photos.</figcaption>
+            </figure>
+
+            <h4>Undergrad Academic Building</h4>
+            <figure>
+                <a href="assets/undergrad_sources.png"><img src="assets/undergrad_sources.png" alt="Undergrad Academic Building: left, center, and right photos." width="1676" height="545" loading="lazy"></a>
+                <figcaption>Undergrad Academic Building: left, center, and right photos.</figcaption>
+            </figure>
+
+            <h4>My living room</h4>
+            <figure>
+                <a href="assets/living_room_sources.png"><img src="assets/living_room_sources.png" alt="My living room: left and right photos." width="1386" height="558" loading="lazy"></a>
+                <figcaption>My living room: left and right photos.</figcaption>
+            </figure>
+        </section>
+
+        <section aria-labelledby="homographies">
+            <h3 id="homographies">A.2: Recovering Homographies</h3>
+            <p>A homography maps a point in one photo to its matching point in another. I used <code>(x, y)</code> coordinates and wrote the mapping as <span class="math">[u, v, 1]<sup>T</sup> ∼ H [x, y, 1]<sup>T</sup></span>. Fixing the bottom-right entry of H to 1 leaves eight values to solve for.</p>
+            <p>For each match, the two rows of Ah = b are <span class="math">[x, y, 1, 0, 0, 0, −ux, −uy] h = u</span> and <span class="math">[0, 0, 0, x, y, 1, −vx, −vy] h = v</span>, where <span class="math">h = [h₁₁, h₁₂, h₁₃, h₂₁, h₂₂, h₂₃, h₃₁, h₃₂]ᵀ</span>.</p>
+            <p>I kept 16 point pairs for each alignment, starting from feature-match candidates and checking them visually. That gave 32 equations for eight unknowns, which I solved with <code>np.linalg.lstsq</code>. The same numbers below mark matching features in the two photos.</p>
+
+            <h4>Gateway Building: left → right</h4>
+            <figure>
+    <a href="assets/gateway_matches_left.png"><img src="assets/gateway_matches_left.png" alt="Gateway Building correspondences. The right photo is the reference." width="998" height="545" loading="lazy"></a>
+    <figcaption>Gateway Building correspondences. The right photo is the reference.</figcaption>
+</figure>
+            <p>The recovered homography was <span class="math">H = [2.193285e+00, 1.438911e-02, -1.188463e+03; 7.323659e-01, 2.050017e+00, -5.344068e+02; 1.566461e-03, 3.456653e-05, 1.000000e+00]</span>, with semicolons separating the rows.</p>
+
+            <h4>Undergrad Academic Building: left → center</h4>
+            <figure>
+    <a href="assets/undergrad_matches_left.png"><img src="assets/undergrad_matches_left.png" alt="Left-to-center correspondences for the Undergrad Academic Building." width="1003" height="545" loading="lazy"></a>
+    <figcaption>Left-to-center correspondences for the Undergrad Academic Building.</figcaption>
+</figure>
+            <p>The recovered homography was <span class="math">H = [1.589003e+00, -2.438773e-02, -4.544299e+02; 4.210840e-01, 1.396781e+00, -2.169723e+02; 7.594619e-04, 2.577901e-06, 1.000000e+00]</span>, with semicolons separating the rows.</p>
+
+            <h4>Undergrad Academic Building: right → center</h4>
+            <figure>
+    <a href="assets/undergrad_matches_right.png"><img src="assets/undergrad_matches_right.png" alt="Right-to-center correspondences for the same set." width="1004" height="545" loading="lazy"></a>
+    <figcaption>Right-to-center correspondences for the same set.</figcaption>
+</figure>
+            <p>The recovered homography was <span class="math">H = [6.696020e-01, 5.628914e-03, 2.903722e+02; -2.325010e-01, 8.774241e-01, 7.237596e+01; -4.156576e-04, -1.631420e-05, 1.000000e+00]</span>, with semicolons separating the rows.</p>
+
+            <h4>My living room: left → right</h4>
+            <figure>
+    <a href="assets/living_room_matches_left.png"><img src="assets/living_room_matches_left.png" alt="Living room correspondences, mostly around the shelf and doorway." width="1386" height="558" loading="lazy"></a>
+    <figcaption>Living room correspondences, mostly around the shelf and doorway.</figcaption>
+</figure>
+            <p>The recovered homography was <span class="math">H = [2.829590e+00, 2.088274e-01, -1.685088e+03; 5.485135e-01, 2.553214e+00, -4.500920e+02; 1.947070e-03, 4.900117e-05, 1.000000e+00]</span>, with semicolons separating the rows.</p>
+        </section>
+
+        <section aria-labelledby="warping">
+            <h3 id="warping">A.3: Warping and Rectification</h3>
+            <p>I first transformed the image corners to find the output bounds. Then I worked backward: for each output pixel, I applied H⁻¹ to find its position in the source photo. This avoids the gaps that forward mapping can leave behind. A separate mask keeps track of valid pixels, so a black pixel in the photo still counts as image content.</p>
+            <p>Nearest neighbor rounds the source coordinates and takes one pixel. Bilinear interpolation uses the four surrounding pixels, with weights based on the fractional offsets dx and dy: <span class="math">I(x, y) = (1−dx)(1−dy) I₀₀ + dx(1−dy) I₁₀ + (1−dx)dy I₀₁ + dx dy I₁₁</span>.</p>
+            <p>To test the warps, I mapped the four corners of each poster to a rectangle. I used an 8:5 ratio for the birthday poster and 3:4 for the botanical print. The aspect ratios are estimates.</p>
+
+            <h4>Birthday poster</h4>
+            <figure>
+    <a href="assets/birthday_comparison.png"><img src="assets/birthday_comparison.png" alt="Selected corners in the original crop, followed by nearest-neighbor and bilinear rectification. Output: 800 × 500." width="2086" height="521" loading="lazy"></a>
+    <figcaption>Selected corners in the original crop, followed by nearest-neighbor and bilinear rectification. Output: 800 × 500.</figcaption>
+</figure>
+            <figure>
+    <a href="assets/birthday_detail.png"><img src="assets/birthday_detail.png" alt="Enlarged birthday poster detail: nearest neighbor on the left and bilinear on the right" width="1174" height="545" loading="lazy"></a>
+    <figcaption>The same 120 × 120 crop from each result, enlarged to compare the interpolation methods.</figcaption>
+</figure>
+            <p>The recovered homography was <span class="math">H = [3.605236e+00, -2.813738e-01, -7.796916e+02; -3.038134e-01, 4.004131e+00, -7.076510e+02; -6.460835e-04, -1.425624e-04, 1.000000e+00]</span>, with semicolons separating the rows.</p>
+
+            <h4>Plant poster</h4>
+            <figure>
+    <a href="assets/botanical_comparison.png"><img src="assets/botanical_comparison.png" alt="Original crop and both rectifications of the botanical print. Output: 600 × 800." width="1698" height="545" loading="lazy"></a>
+    <figcaption>Original crop and both rectifications of the plant poster. Output: 600 × 800.</figcaption>
+</figure>
+            <figure>
+    <a href="assets/botanical_detail.png"><img src="assets/botanical_detail.png" alt="Enlarged botanical print detail: nearest neighbor on the left and bilinear on the right" width="1174" height="545" loading="lazy"></a>
+    <figcaption>The leaf and stem edges show the pixel steps in nearest neighbor and the smoother bilinear result.</figcaption>
+</figure>
+            <p>The recovered homography was <span class="math">H = [6.699158e+00, -5.490837e-11, -3.086369e+03; 2.101160e-01, 6.390587e+00, -1.279061e+03; 4.939950e-04, -3.686175e-04, 1.000000e+00]</span>, with semicolons separating the rows.</p>
+
+            <p>Nearest neighbor looks blockier along the lettering and leaf edges. Bilinear smooths those edges out, though it also softens them. The posters are small in the source photos, so enlarging them cannot bring back fine detail.</p>
+            <table>
+                <caption>Warp times from one local run, in milliseconds. Each pair uses the same output bounds.</caption>
+                <thead><tr><th scope="col">Image</th><th scope="col">Nearest neighbor</th><th scope="col">Bilinear</th></tr></thead>
+                <tbody>
+                    <tr><th scope="row">Birthday poster</th><td>19.1 ms</td><td>39.3 ms</td></tr>
+                    <tr><th scope="row">Plant poster</th><td>14.2 ms</td><td>46.9 ms</td></tr>
+                </tbody>
+            </table>
+            <p>Nearest neighbor was faster in both cases. It only reads one source pixel per output pixel, while bilinear reads four.</p>
+        </section>
+
+        <section aria-labelledby="mosaics">
+            <h3 id="mosaics">A.4: Blending the Mosaics</h3>
+            <p>I warped each set onto one canvas using bilinear interpolation. Gateway Building and my living room use the right photo as the reference. The Undergrad Academic Building uses the center photo, with each outer photo mapped directly into it.</p>
+            <p>To soften the seams, I made a weight map that is largest in the middle of each photo and falls off toward the edges. I used the distance to the nearest edge, plus one pixel so the outer border still has a positive weight, and divided by the largest weight. Then I warped the photos and weight maps together and combined them with a weighted average, <span class="math">M(p) = Σᵢ wᵢ(p) Iᵢ(p) / Σᵢ wᵢ(p)</span>.</p>
+            <p>The black borders are areas that none of the warped photos cover.</p>
+
+            <h4>Gateway Building</h4>
+            <figure>
+    <a href="assets/gateway_mosaic.png"><img src="assets/gateway_mosaic.png" alt="Feathered mosaic of the Gateway Building atrium" width="1957" height="2046" loading="lazy"></a>
+    <figcaption>Gateway Building mosaic from the two source photos.</figcaption>
+</figure>
+            <p>The windows and floor edges line up fairly well. There is still some ghosting around people and railings. Feathering softens the transition, but it cannot make those details agree when they differ between the photos.</p>
+
+            <h4>Undergrad Academic Building</h4>
+            <figure>
+    <a href="assets/undergrad_mosaic.png"><img src="assets/undergrad_mosaic.png" alt="Three-photo mosaic of the Undergrad Academic Building" width="1699" height="1427" loading="lazy"></a>
+    <figcaption>All three photos combined, using the center view as the reference.</figcaption>
+</figure>
+            <p>The three views give a wider view of the building and lawn. The building edges line up well, but the sky changes in brightness between photos, so the blend is still visible there.</p>
+
+            <h4>My living room</h4>
+            <figure>
+    <a href="assets/living_room_mosaic.png"><img src="assets/living_room_mosaic.png" alt="Feathered mosaic of my living room" width="2686" height="1863" loading="lazy"></a>
+    <figcaption>Living room mosaic from the two photos also used for rectification.</figcaption>
+</figure>
+            <p>The shelf and doorway line up well around the overlap. The far left looks stretched because it is being projected into the right photo's view. Blending helps with the seam, but it does not remove that perspective effect.</p>
+        </section>
+    </main>
+</body>
+</html>
